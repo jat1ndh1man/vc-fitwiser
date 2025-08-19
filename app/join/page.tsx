@@ -1,7 +1,23 @@
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useMeeting, useParticipant } from "@videosdk.live/react-sdk";
 
+declare global {
+  interface Window {
+    ReactNativeWebView?: { postMessage: (msg: string) => void };
+  }
+}
+
+// Helper to send events back to RN WebView
+const postToRN = (
+  type: 'CALL_CONNECTED' | 'CALL_DISCONNECTED' | 'END_CALL' | 'CALL_ERROR',
+  payload: Record<string, any> = {}
+) => {
+  try {
+    window.ReactNativeWebView?.postMessage(JSON.stringify({ type, ...payload }));
+  } catch {
+    // ignore if not running inside RN
+  }
+};
 
 type Participant = {
   id: string;
@@ -55,6 +71,14 @@ const [localParticipant, setLocalParticipant] = useState<Participant | null>(nul
     setParticipantId(participantIdParam);
   }, []);
 
+    useEffect(() => {
+  const handleUnload = () => {
+    postToRN('CALL_DISCONNECTED', { meetingId });
+  };
+  window.addEventListener('beforeunload', handleUnload);
+  return () => window.removeEventListener('beforeunload', handleUnload);
+}, [meetingId]);
+
   // Initialize VideoSDK
   const initializeVideoSDK = useCallback(async () => {
     if (!meetingId || !token) {
@@ -91,7 +115,9 @@ const [localParticipant, setLocalParticipant] = useState<Participant | null>(nul
       displayName: participantName,
       webcamOn: true,
       micOn: true
+      
     });
+     postToRN('CALL_CONNECTED', { meetingId, participantId, participantName });
   };
 
   useEffect(() => {
@@ -123,6 +149,7 @@ const [localParticipant, setLocalParticipant] = useState<Participant | null>(nul
 
   const endCall = () => {
     console.log('Ending call');
+    postToRN('END_CALL', { meetingId });
     // In real implementation: meeting.leave();
     setError('Call ended. You can close this window.');
   };
