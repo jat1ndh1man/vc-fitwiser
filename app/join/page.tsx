@@ -516,30 +516,27 @@ const VideoCallComponent = ({
 
     return (
       <div 
-        className={`relative bg-gray-900 rounded-lg overflow-hidden ${
-          isExpanded ? 'fixed inset-4 z-40' : 'aspect-video'
-        } ${isLocal ? 'border-2 border-blue-500' : 'border border-gray-700'} 
-        cursor-pointer transition-all duration-200 hover:shadow-lg`}
+        className={`participant-view ${isLocal ? 'local' : ''} ${isExpanded ? 'expanded' : ''}`}
         onDoubleClick={() => handleDoubleClick(participant.id)}
       >
         {hasVideo ? (
           <video
             ref={videoRef}
-            className={`w-full h-full ${isExpanded ? 'object-contain' : 'object-cover'}`}
+            className={`participant-video ${isExpanded ? 'expanded' : ''}`}
             autoPlay
             playsInline
             muted={isLocal}
           />
         ) : (
-          <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-800 to-gray-900">
-            <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
-                <span className="text-2xl font-bold text-white">
+          <div className="no-video-placeholder">
+            <div className="no-video-content">
+              <div className="participant-avatar">
+                <span className="participant-avatar-text">
                   {participant.displayName ? participant.displayName.charAt(0).toUpperCase() : '?'}
                 </span>
               </div>
-              <p className="text-white text-lg font-medium">{participant.displayName || 'Unknown'}</p>
-              <p className="text-gray-400 text-sm mt-1">Camera is off</p>
+              <p className="participant-name">{participant.displayName || 'Unknown'}</p>
+              <p className="camera-off-text">Camera is off</p>
             </div>
           </div>
         )}
@@ -554,23 +551,23 @@ const VideoCallComponent = ({
         )}
 
         {/* Participant info overlay */}
-        <div className="absolute bottom-3 left-3 right-3">
-          <div className="bg-black bg-opacity-60 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center justify-between">
-            <span className="text-white text-sm font-medium truncate">
+        <div className="participant-info-overlay">
+          <div className="participant-info">
+            <span className="participant-label">
               {isLocal ? 'You' : participant.displayName || 'Unknown'}
             </span>
-            <div className="flex items-center space-x-2 ml-2">
+            <div className="participant-status">
               {!localMicOn && isLocal && (
-                <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="status-indicator muted">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
                   </svg>
                 </div>
               )}
               {!hasVideo && (
-                <div className="w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="status-indicator camera-off">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
                   </svg>
@@ -583,18 +580,18 @@ const VideoCallComponent = ({
         {/* Expand/collapse button */}
         {hasVideo && (
           <button
-            className="absolute top-3 right-3 bg-black bg-opacity-60 backdrop-blur-sm rounded-lg p-2 text-white hover:bg-opacity-80 transition-all"
+            className="expand-button"
             onClick={(e) => {
               e.stopPropagation();
               handleDoubleClick(participant.id);
             }}
           >
             {isExpanded ? (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M15 15v4.5M15 15h4.5M15 15l5.25 5.25" />
               </svg>
             ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
               </svg>
             )}
@@ -607,34 +604,32 @@ const VideoCallComponent = ({
   // Error state
   if (connectionError) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
-          <div className="text-center">
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Connection Error</h3>
-            <p className="text-gray-600 mb-4">{connectionError}</p>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => {
-                  setConnectionError(null);
-                  setIsConnecting(true);
-                  window.location.reload();
-                }}
-                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Try Again
-              </button>
-              <button
-                onClick={onLeave}
-                className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
-              >
-                Close
-              </button>
-            </div>
+      <div className="error-modal">
+        <div className="error-content">
+          <div className="error-icon">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: '#dc2626'}}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h3 className="error-title">Connection Error</h3>
+          <p className="error-message">{connectionError}</p>
+          <div className="error-buttons">
+            <button
+              onClick={() => {
+                setConnectionError(null);
+                setIsConnecting(true);
+                window.location.reload();
+              }}
+              className="error-button primary"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={onLeave}
+              className="error-button secondary"
+            >
+              Close
+            </button>
           </div>
         </div>
       </div>
@@ -645,21 +640,12 @@ const VideoCallComponent = ({
   const totalParticipants = participantArray.length;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-95 flex flex-col z-50 overflow-hidden">
-      {/* Global Styles */}
-      <style jsx global>{`
-        body {
-          margin: 0;
-          padding: 0;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-        }
-      `}</style>
-      
+    <div className="video-call-container">
       {/* Header */}
-      <div className="bg-gray-900 p-4 flex items-center justify-between flex-shrink-0 border-b border-gray-700">
+      <div className="video-call-header">
         <div>
-          <h2 className="text-white font-semibold text-lg">Video Call</h2>
-          <p className="text-gray-400 text-sm">
+          <h2 className="video-call-title">Video Call</h2>
+          <p className="video-call-subtitle">
             {isConnecting ? 'Connecting...' : 
              isLeavingCall ? 'Ending call...' :
              `${totalParticipants + 1} participant${totalParticipants !== 0 ? 's' : ''}`}
@@ -667,7 +653,7 @@ const VideoCallComponent = ({
         </div>
         <button
           onClick={onLeave}
-          className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-800"
+          className="header-close-btn"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -676,27 +662,35 @@ const VideoCallComponent = ({
       </div>
 
       {/* Video Grid */}
-      <div className="flex-1 p-4 min-h-0 overflow-hidden">
+      <div className="video-grid-container">
         {isConnecting ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-white text-lg">Connecting to video call...</p>
-              <p className="text-gray-400 text-sm mt-1">Please wait while we connect you</p>
+          <div className="loading-container">
+            <div className="loading-content">
+              <div className="spinner"></div>
+              <p className="loading-title">Connecting to video call...</p>
+              <p className="loading-subtitle">Please wait while we connect you</p>
             </div>
           </div>
         ) : isLeavingCall ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-              <p className="text-white text-lg">Ending call...</p>
+          <div className="loading-container">
+            <div className="loading-content">
+              <div className="spinner" style={{borderTopColor: '#dc2626'}}></div>
+              <p className="loading-title">Ending call...</p>
             </div>
           </div>
         ) : (
-          <div className="h-full relative">
+          <div style={{height: '100%', position: 'relative'}}>
             {/* Expanded participant overlay */}
             {expandedParticipant && (
-              <div className="absolute inset-0 z-30 bg-black bg-opacity-90">
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 30,
+                background: 'rgba(0,0,0,0.9)'
+              }}>
                 {meeting && meeting.localParticipant && expandedParticipant === meeting.localParticipant.id && (
                   <ParticipantView
                     key={`expanded-local-${meeting.localParticipant.id}`}
@@ -720,16 +714,14 @@ const VideoCallComponent = ({
 
             {/* Single participant or waiting state */}
             {remoteParticipants.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-1a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                  <p className="text-white text-xl font-medium">Waiting for participants...</p>
-                  <p className="text-gray-400 text-sm mt-2">Share the room ID with others to join</p>
+              <div className="waiting-room">
+                <div className="waiting-content">
+                  <div className="waiting-icon">👥</div>
+                  <p className="waiting-title">Waiting for participants...</p>
+                  <p className="waiting-subtitle">Share the room ID with others to join</p>
                   {/* Show local video while waiting */}
                   {meeting && meeting.localParticipant && (
-                    <div className="mt-8 max-w-md mx-auto">
+                    <div className="local-video-preview">
                       <ParticipantView
                         key={`local-waiting-${meeting.localParticipant.id}`}
                         participant={meeting.localParticipant}
@@ -741,11 +733,12 @@ const VideoCallComponent = ({
               </div>
             ) : (
               /* Multiple participants grid */
-              <div className={`grid gap-4 h-full ${
-                remoteParticipants.length + 1 <= 2 ? 'grid-cols-1 lg:grid-cols-2' : 
-                remoteParticipants.length + 1 <= 4 ? 'grid-cols-2' : 
-                'grid-cols-2 lg:grid-cols-3'
-              } max-h-[calc(100vh-200px)] overflow-hidden`}>
+              <div className={`participants-grid ${
+                remoteParticipants.length + 1 <= 1 ? 'grid-1' :
+                remoteParticipants.length + 1 <= 2 ? 'grid-2' : 
+                remoteParticipants.length + 1 <= 4 ? 'grid-4' : 
+                'grid-many'
+              }`}>
                 {/* Local participant tile */}
                 {meeting && meeting.localParticipant && (
                   <ParticipantView
@@ -770,25 +763,21 @@ const VideoCallComponent = ({
       </div>
 
       {/* Controls */}
-      <div className="bg-gray-900 p-6 border-t border-gray-700 flex-shrink-0">
-        <div className="flex items-center justify-center space-x-8">
+      <div className="controls-container">
+        <div className="controls-buttons">
           {/* Microphone */}
           <button
             onClick={toggleMic}
             disabled={isConnecting || isLeavingCall}
-            className={`p-4 rounded-full transition-all duration-200 ${
-              localMicOn 
-                ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-                : 'bg-red-600 hover:bg-red-700 text-white'
-            } disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105`}
+            className={`control-button ${localMicOn ? 'mic-on' : 'mic-off'}`}
             title={localMicOn ? 'Mute microphone' : 'Unmute microphone'}
           >
             {localMicOn ? (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
               </svg>
             ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
               </svg>
@@ -799,19 +788,15 @@ const VideoCallComponent = ({
           <button
             onClick={toggleWebcam}
             disabled={isConnecting || isLeavingCall}
-            className={`p-4 rounded-full transition-all duration-200 ${
-              localWebcamOn 
-                ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-                : 'bg-red-600 hover:bg-red-700 text-white'
-            } disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105`}
+            className={`control-button ${localWebcamOn ? 'camera-on' : 'camera-off'}`}
             title={localWebcamOn ? 'Turn off camera' : 'Turn on camera'}
           >
             {localWebcamOn ? (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
             ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
               </svg>
@@ -822,13 +807,13 @@ const VideoCallComponent = ({
           <button
             onClick={handleLeaveCall}
             disabled={isLeavingCall}
-            className="p-4 rounded-full bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:scale-105"
+            className="control-button end-call"
             title="End call"
           >
             {isLeavingCall ? (
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+              <div className="end-call-spinner"></div>
             ) : (
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 3l18 18" />
               </svg>
             )}
@@ -836,12 +821,12 @@ const VideoCallComponent = ({
         </div>
         
         {/* Call info */}
-        <div className="text-center mt-4">
-          <p className="text-gray-400 text-sm">
-            Room ID: <span className="font-mono font-medium">{roomId}</span> • 
+        <div className="call-info">
+          <p className="call-details">
+            Room ID: <span className="room-id">{roomId}</span> • 
             {remoteParticipants.length + 1} participant{remoteParticipants.length !== 0 ? 's' : ''}
           </p>
-          <p className="text-gray-500 text-xs mt-1">
+          <p className="call-instructions">
             Double-click any video to expand • Audio should work automatically
           </p>
         </div>
