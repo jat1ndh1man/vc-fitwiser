@@ -1,47 +1,45 @@
 'use client';
-import React, { useState, useEffect, useRef, JSX } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 
 // VideoSDK Configuration - Update these with your actual values
 const VIDEOSDK_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGlrZXkiOiJkMzFmYjVjZi1iYzFkLTRmMjQtYjg1Ni05OTVlZTgzMjY2MDAiLCJwZXJtaXNzaW9ucyI6WyJhbGxvd19qb2luIl0sImlhdCI6MTc1NTQyOTQ4MSwiZXhwIjoxOTEzMjE3NDgxfQ.PDGqipQbZ8B_gd1Emys5pFjkC7IOGrwvRq418fNhL1Y";
 
-// TypeScript interfaces
-interface ParticipantViewProps {
-  participantId: string;
-  isLocal?: boolean;
-}
-
-interface WebcamDevice {
-  deviceId: string;
-  label: string;
-}
-
 // Loading component
 const LoadingComponent = () => (
-  <div className="container">
-    <div className="video-container">
-      <div className="participants-grid participants-1">
-        <div className="waiting-room">
-          <div className="spinner"></div>
-          <h2>Loading video call...</h2>
-          <p>Please wait while we initialize the video components</p>
-        </div>
-      </div>
+  <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+      <h2 className="text-white text-lg">Loading video call...</h2>
+      <p className="text-gray-400 text-sm mt-1">Please wait while we initialize the video components</p>
     </div>
   </div>
 );
 
 // Error component
 const ErrorComponent = ({ error }: { error: string }) => (
-  <div className="container">
-    <div className="video-container">
-      <div className="participants-grid participants-1">
-        <div className="error-container">
-          <div className="icon">⚠️</div>
-          <h2>Configuration Error</h2>
-          <p>{error}</p>
-          <button className="retry-btn secondary" onClick={() => window.close()}>
-            Close Window
+  <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
+      <div className="text-center">
+        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Connection Error</h3>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => window.location.reload()}
+            className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={() => window.close()}
+            className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+          >
+            Close
           </button>
         </div>
       </div>
@@ -57,22 +55,6 @@ const VideoCallMainComponent = () => {
   const [participantId, setParticipantId] = useState<string>('');
   const [initialized, setInitialized] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
-  const [videoSDKComponents, setVideoSDKComponents] = useState<any>(null);
-
-  // Load VideoSDK components dynamically
-  useEffect(() => {
-    const loadVideoSDK = async () => {
-      try {
-        const { MeetingProvider, useMeeting, useParticipant } = await import("@videosdk.live/react-sdk");
-        setVideoSDKComponents({ MeetingProvider, useMeeting, useParticipant });
-      } catch (error) {
-        console.error('Failed to load VideoSDK:', error);
-        setError('Failed to load video call components');
-      }
-    };
-
-    loadVideoSDK();
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -108,839 +90,761 @@ const VideoCallMainComponent = () => {
     setInitialized(true);
   }, []);
 
-  // Add global styles
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-        background: #000;
-        color: white;
-        overflow: hidden;
-      }
-
-      .container {
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        background: #000;
-      }
-
-      .header {
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 1rem 2rem;
-        text-align: center;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        z-index: 100;
-      }
-
-      .header h1 {
-        font-size: 1.2rem;
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-      }
-
-      .header .room-info {
-        font-size: 0.875rem;
-        opacity: 0.7;
-      }
-
-      .participant-count {
-        font-size: 0.75rem;
-        opacity: 0.6;
-        margin-top: 0.25rem;
-      }
-
-      .video-container {
-        flex: 1;
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        background: #1a1a1a;
-      }
-
-      .participants-grid {
-        width: 100%;
-        height: 100%;
-        display: grid;
-        gap: 8px;
-        padding: 16px;
-      }
-
-      .participants-1 {
-        grid-template-columns: 1fr;
-        grid-template-rows: 1fr;
-      }
-
-      .participants-2 {
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: 1fr;
-      }
-
-      .participants-3,
-      .participants-4 {
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: 1fr 1fr;
-      }
-
-      .participants-many {
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        grid-auto-rows: minmax(200px, 1fr);
-      }
-
-      .participant-wrapper {
-        position: relative;
-      }
-
-      .participant {
-        position: relative;
-        background: #333;
-        border-radius: 12px;
-        overflow: hidden;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 200px;
-        width: 100%;
-        height: 100%;
-      }
-
-      .participant.local {
-        border: 2px solid #10B981;
-      }
-
-      .video-container video {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border-radius: 12px;
-      }
-
-      .participant-video {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-
-      .participant-info {
-        position: absolute;
-        bottom: 12px;
-        left: 12px;
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .participant-info .status-icon {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #10B981;
-      }
-
-      .participant-info .muted {
-        background: transparent;
-        width: auto;
-        height: auto;
-      }
-
-      .no-video-placeholder {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        text-align: center;
-        height: 100%;
-        width: 100%;
-      }
-
-      .avatar-placeholder {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        background: #10B981;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        font-weight: bold;
-        margin-bottom: 1rem;
-      }
-
-      .participant-name {
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-      }
-
-      .no-video-text {
-        opacity: 0.7;
-        font-size: 0.875rem;
-      }
-
-      .waiting-room, .error-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        text-align: center;
-        height: 100%;
-        padding: 2rem;
-      }
-
-      .waiting-room .icon, .error-container .icon {
-        font-size: 4rem;
-        margin-bottom: 1rem;
-        opacity: 0.6;
-      }
-
-      .error-container .icon {
-        color: #EF4444;
-        opacity: 1;
-      }
-
-      .waiting-room h2, .error-container h2 {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-      }
-
-      .error-container h2 {
-        color: #EF4444;
-      }
-
-      .waiting-room p, .error-container p {
-        opacity: 0.7;
-        font-size: 1rem;
-        margin-bottom: 2rem;
-        line-height: 1.5;
-      }
-
-      .controls {
-        background: rgba(0, 0, 0, 0.9);
-        padding: 1.5rem 2rem;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 1rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-      }
-
-      .control-btn {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        border: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-size: 1.25rem;
-        color: white;
-        background: rgba(255, 255, 255, 0.2);
-      }
-
-      .control-btn:hover:not(:disabled) {
-        transform: scale(1.05);
-        background: rgba(255, 255, 255, 0.3);
-      }
-
-      .control-btn:active {
-        transform: scale(0.95);
-      }
-
-      .control-btn.muted {
-        background: rgba(239, 68, 68, 0.8);
-      }
-
-      .control-btn.end-call {
-        background: rgba(239, 68, 68, 0.9);
-      }
-
-      .control-btn.end-call:hover:not(:disabled) {
-        background: rgba(239, 68, 68, 1);
-      }
-
-      .control-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-
-      .camera-switch {
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: rgba(0, 0, 0, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        color: white;
-        font-size: 1rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
-        z-index: 10;
-      }
-
-      .camera-switch:hover {
-        background: rgba(0, 0, 0, 0.8);
-      }
-
-      .retry-btn {
-        background: #10B981;
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 1rem;
-        margin: 0.5rem;
-        transition: background 0.2s ease;
-      }
-
-      .retry-btn:hover {
-        background: #059669;
-      }
-
-      .retry-btn.secondary {
-        background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-      }
-
-      .retry-btn.secondary:hover {
-        background: rgba(255, 255, 255, 0.1);
-      }
-
-      .spinner {
-        width: 24px;
-        height: 24px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-top: 2px solid white;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin-bottom: 1rem;
-      }
-
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-
-      @media (max-width: 768px) {
-        .header {
-          padding: 0.75rem 1rem;
-        }
-
-        .header h1 {
-          font-size: 1.1rem;
-        }
-
-        .controls {
-          padding: 1rem;
-          gap: 0.75rem;
-        }
-
-        .control-btn {
-          width: 50px;
-          height: 50px;
-          font-size: 1.1rem;
-        }
-
-        .participants-grid {
-          padding: 8px;
-          gap: 4px;
-        }
-
-        .participants-2,
-        .participants-3,
-        .participants-4 {
-          grid-template-columns: 1fr;
-          grid-template-rows: repeat(auto-fit, minmax(150px, 1fr));
-        }
-
-        .avatar-placeholder {
-          width: 60px;
-          height: 60px;
-          font-size: 1.5rem;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-
-    return () => {
-      if (document.head.contains(style)) {
-        document.head.removeChild(style);
-      }
-    };
-  }, []);
-
   if (error) {
     return <ErrorComponent error={error} />;
   }
 
-  if (!initialized || !videoSDKComponents) {
+  if (!initialized) {
     return <LoadingComponent />;
   }
 
   // Render the actual video call component
   return (
-    <VideoCallWithSDK
-      meetingId={meetingId}
-      token={token}
+    <VideoCallComponent
+      roomId={meetingId}
       participantName={participantName}
-      participantId={participantId}
-      videoSDKComponents={videoSDKComponents}
+      onLeave={() => {
+        console.log('Call ended by user');
+        window.close();
+      }}
     />
   );
 };
 
-// Video Call Component with loaded VideoSDK
-const VideoCallWithSDK = ({
-  meetingId,
-  token,
-  participantName,
-  participantId,
-  videoSDKComponents
+// Main Video Call Component
+const VideoCallComponent = ({ 
+  roomId, 
+  onLeave, 
+  participantName = "User" 
 }: {
-  meetingId: string;
-  token: string;
-  participantName: string;
-  participantId: string;
-  videoSDKComponents: any;
+  roomId: string;
+  onLeave: () => void;
+  participantName?: string;
 }) => {
-  const { MeetingProvider } = videoSDKComponents;
-
-  return (
-    <MeetingProvider
-      config={{
-        meetingId,
-        micEnabled: true,
-        webcamEnabled: true,
-        name: participantName,
-        participantId: participantId,
-        debugMode: false
-      }}
-      token={token}
-    >
-      <MeetingView videoSDKComponents={videoSDKComponents} />
-    </MeetingProvider>
+  const [meeting, setMeeting] = useState<any>(null);
+  const [participants, setParticipants] = useState(new Map());
+  const [localWebcamOn, setLocalWebcamOn] = useState(true);
+  const [localMicOn, setLocalMicOn] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(true);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isLeavingCall, setIsLeavingCall] = useState(false);
+  const [participantStreams, setParticipantStreams] = useState(new Map());
+  const [audioStreams, setAudioStreams] = useState(new Map());
+  const [expandedParticipant, setExpandedParticipant] = useState<string | null>(null);
+  
+  const remoteParticipants = Array.from(participants.values()).filter(
+    (p: any) => p.id !== meeting?.localParticipant?.id
   );
-};
 
-// Meeting View Component
-const MeetingView = ({ videoSDKComponents }: { videoSDKComponents: any }) => {
-  const [joined, setJoined] = useState<string | null>(null);
-  const [isCameraOn, setIsCameraOn] = useState<boolean>(true);
-  const [isMicOn, setIsMicOn] = useState<boolean>(true);
-  const [availableWebcams, setAvailableWebcams] = useState<WebcamDevice[]>([]);
-  const [selectedWebcamId, setSelectedWebcamId] = useState<string | null>(null);
-  const [isLeavingCall, setIsLeavingCall] = useState<boolean>(false);
+  const videoElementRefs = useRef(new Map());
+  const audioElementRefs = useRef(new Map());
 
-  const { useMeeting } = videoSDKComponents;
+  async function loadVideoSDK() {
+    const mod = await import("@videosdk.live/js-sdk");
+    const VS = mod?.VideoSDK || mod?.default || mod;
+    if (!VS || typeof VS.initMeeting !== "function") {
+      throw new Error(
+        "Failed to load VideoSDK. Check that @videosdk.live/js-sdk is installed and up to date."
+      );
+    }
+    return VS;
+  }
 
-  const {
-    join,
-    leave,
-    toggleMic,
-    toggleWebcam,
-    changeWebcam,
-    getWebcams,
-    participants,
-    localParticipant,
-    meetingId
-  } = useMeeting({
-    onMeetingJoined: async () => {
-      console.log("Meeting Joined Successfully");
-      setJoined("JOINED");
-      
-      // Get available webcams
+  // Initialize VideoSDK when component mounts
+  useEffect(() => {
+    let isMounted = true;
+    let currentMeeting: any = null;
+
+    const initializeVideoSDK = async () => {
       try {
-        const webcams: WebcamDevice[] = await getWebcams();
-        setAvailableWebcams(webcams);
-        console.log("Available webcams:", webcams);
-        
-        // Set default webcam (preferably front camera)
-        const frontCamera = webcams.find((cam: WebcamDevice) => 
-          cam.label.toLowerCase().includes('front') || 
-          cam.label.toLowerCase().includes('user')
-        ) || webcams[0];
-        
-        if (frontCamera) {
-          setSelectedWebcamId(frontCamera.deviceId);
+        if (!isMounted || meeting) {
+          console.log("🚫 Skipping initialization - component unmounted or meeting exists");
+          return;
         }
-      } catch (error) {
-        console.warn("Could not get webcams:", error);
+
+        console.log("🔄 Initializing VideoSDK for web...");
+
+        if (!VIDEOSDK_TOKEN || VIDEOSDK_TOKEN.length < 10) {
+          throw new Error("VideoSDK token not configured. Please set VIDEOSDK_TOKEN in the component");
+        }
+
+        // Request permissions
+        try {
+          await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          console.log("✅ Media permissions granted");
+        } catch (permError) {
+          console.warn("⚠️ Media permission error:", permError);
+          // Continue anyway, VideoSDK will handle this
+        }
+
+        const VideoSDK = await loadVideoSDK();
+        if (!isMounted) return;
+
+        VideoSDK.config(VIDEOSDK_TOKEN);
+
+        const meetingConfig = {
+          meetingId: roomId,
+          name: participantName,
+          micEnabled: localMicOn,
+          webcamEnabled: localWebcamOn,
+          mode: "SEND_AND_RECV" as const,
+        };
+
+        const meetingInstance = VideoSDK.initMeeting(meetingConfig);
+        currentMeeting = meetingInstance;
+
+        if (!isMounted) {
+          meetingInstance.leave();
+          return;
+        }
+
+        // Set up listeners
+        meetingInstance.on("meeting-joined", handleMeetingJoined);
+        meetingInstance.on("meeting-left", handleMeetingLeft);
+        meetingInstance.on("participant-joined", handleParticipantJoined);
+        meetingInstance.on("participant-left", handleParticipantLeft);
+        meetingInstance.on("error", handleMeetingError);
+
+        // Local participant stream listeners
+        meetingInstance.localParticipant.on("stream-enabled", (stream: any) => {
+          handleStreamEnabled(meetingInstance.localParticipant.id, stream);
+        });
+        meetingInstance.localParticipant.on("stream-disabled", (stream: any) => {
+          handleStreamDisabled(meetingInstance.localParticipant.id, stream);
+        });
+
+        setMeeting(meetingInstance);
+        meetingInstance.join();
+
+      } catch (error: any) {
+        console.error("❌ VideoSDK initialization error:", error);
+        if (isMounted) {
+          setConnectionError(error.message);
+          setIsConnecting(false);
+        }
       }
-    },
-    onMeetingLeft: () => {
-      console.log("Meeting Left");
-      setJoined("LEFT");
+    };
+
+    const handleMeetingJoined = () => {
+      console.log("✅ VideoSDK meeting joined successfully");
+      setIsConnecting(false);
+      setConnectionError(null);
+    };
+
+    const handleMeetingLeft = () => {
+      console.log("👋 VideoSDK meeting left");
+      setIsConnecting(false);
       setIsLeavingCall(false);
-    },
-    onError: (error: any) => {
-      console.error("Meeting Error:", error);
-      setJoined("ERROR");
-      setIsLeavingCall(false);
-    },
-    onParticipantJoined: (participant: any) => {
-      console.log("Participant Joined:", participant);
-    },
-    onParticipantLeft: (participant: any) => {
-      console.log("Participant Left:", participant);
-    },
-  });
+      onLeave();
+    };
 
-  const joinMeeting = (): void => {
-    setJoined("JOINING");
-    join();
-  };
+    const handleParticipantJoined = (participant: any) => {
+      console.log("👤 Participant joined:", participant.displayName, participant.id);
+      
+      if (meeting && participant.id === meeting.localParticipant?.id) {
+        console.log("🚫 Skipping local participant from participants list");
+        return;
+      }
+      
+      setParticipants(prev => {
+        if (prev.has(participant.id)) {
+          console.log("⚠️ Participant already exists, skipping:", participant.id);
+          return prev;
+        }
+        
+        const updated = new Map(prev);
+        updated.set(participant.id, participant);
+        console.log("✅ Added remote participant:", participant.id, "Total remote:", updated.size);
+        return updated;
+      });
 
-  const leaveMeeting = (): void => {
-    setIsLeavingCall(true);
-    leave();
-  };
+      // Listen for stream events
+      participant.on("stream-enabled", (stream: any) => {
+        console.log("📺 Remote stream enabled:", stream.kind, "for", participant.id);
+        handleStreamEnabled(participant.id, stream);
+      });
 
-  const handleToggleMic = (): void => {
-    toggleMic();
-    setIsMicOn(!isMicOn);
-  };
+      participant.on("stream-disabled", (stream: any) => {
+        console.log("📺 Remote stream disabled:", stream.kind, "for", participant.id);
+        handleStreamDisabled(participant.id, stream);
+      });
+    };
 
-  const handleToggleCamera = (): void => {
-    toggleWebcam();
-    setIsCameraOn(!isCameraOn);
-  };
+    const handleParticipantLeft = (participant: any) => {
+      console.log("👤 Participant left:", participant.displayName);
+      setParticipants(prev => {
+        const updated = new Map(prev);
+        updated.delete(participant.id);
+        return updated;
+      });
 
-  const handleSwitchCamera = async (): Promise<void> => {
-    if (availableWebcams.length < 2) {
-      console.log("No alternative camera available");
-      return;
+      setParticipantStreams(prev => {
+        const updated = new Map(prev);
+        updated.delete(participant.id);
+        return updated;
+      });
+
+      setAudioStreams(prev => {
+        const updated = new Map(prev);
+        updated.delete(participant.id);
+        return updated;
+      });
+
+      // Clean up video element
+      const videoElement = videoElementRefs.current.get(participant.id);
+      if (videoElement) {
+        videoElement.srcObject = null;
+        videoElementRefs.current.delete(participant.id);
+      }
+
+      // Clean up audio element
+      const audioElement = audioElementRefs.current.get(participant.id);
+      if (audioElement) {
+        audioElement.srcObject = null;
+        audioElementRefs.current.delete(participant.id);
+      }
+
+      // Close expanded view if this participant was expanded
+      if (expandedParticipant === participant.id) {
+        setExpandedParticipant(null);
+      }
+    };
+
+    const handleStreamEnabled = (participantId: string, stream: any) => {
+      console.log("📺 Stream enabled for participant:", participantId, "kind:", stream.kind);
+      
+      if (stream.kind === "video") {
+        setParticipantStreams(prev => {
+          const updated = new Map(prev);
+          updated.set(participantId, stream);
+          console.log("✅ Video stream stored for:", participantId);
+          return updated;
+        });
+
+        setTimeout(() => {
+          const videoElement = videoElementRefs.current.get(participantId);
+          if (videoElement && stream.track) {
+            try {
+              const mediaStream = new MediaStream([stream.track]);
+              videoElement.srcObject = mediaStream;
+              videoElement.play().catch(console.error);
+              console.log("✅ Video element updated for:", participantId);
+            } catch (error) {
+              console.error("❌ Error updating video element:", error);
+            }
+          }
+        }, 100);
+      } else if (stream.kind === "audio") {
+        console.log("🔊 Audio stream enabled for:", participantId);
+        setAudioStreams(prev => {
+          const updated = new Map(prev);
+          updated.set(participantId, stream);
+          return updated;
+        });
+
+        setTimeout(() => {
+          const audioElement = audioElementRefs.current.get(participantId);
+          if (audioElement && stream.track) {
+            try {
+              const mediaStream = new MediaStream([stream.track]);
+              audioElement.srcObject = mediaStream;
+              audioElement.play().catch(console.error);
+              console.log("✅ Audio element updated for:", participantId);
+            } catch (error) {
+              console.error("❌ Error updating audio element:", error);
+            }
+          }
+        }, 100);
+      }
+    };
+
+    const handleStreamDisabled = (participantId: string, stream: any) => {
+      if (stream.kind === "video") {
+        setParticipantStreams(prev => {
+          const updated = new Map(prev);
+          updated.delete(participantId);
+          return updated;
+        });
+
+        const videoElement = videoElementRefs.current.get(participantId);
+        if (videoElement) {
+          videoElement.srcObject = null;
+        }
+      } else if (stream.kind === "audio") {
+        setAudioStreams(prev => {
+          const updated = new Map(prev);
+          updated.delete(participantId);
+          return updated;
+        });
+
+        const audioElement = audioElementRefs.current.get(participantId);
+        if (audioElement) {
+          audioElement.srcObject = null;
+        }
+      }
+    };
+
+    const handleMeetingError = (error: any) => {
+      console.error("❌ VideoSDK meeting error:", error);
+      setConnectionError(error.message || "Unknown video call error");
+      setIsConnecting(false);
+    };
+
+    initializeVideoSDK();
+
+    return () => {
+      isMounted = false;
+      if (currentMeeting) {
+        try {
+          currentMeeting.off("meeting-joined", handleMeetingJoined);
+          currentMeeting.off("meeting-left", handleMeetingLeft);
+          currentMeeting.off("participant-joined", handleParticipantJoined);
+          currentMeeting.off("participant-left", handleParticipantLeft);
+          currentMeeting.off("error", handleMeetingError);
+          currentMeeting.leave();
+        } catch (error) {
+          console.warn("⚠️ Error during cleanup:", error);
+        }
+      }
+    };
+  }, [roomId]);
+
+  const toggleWebcam = () => {
+    if (meeting) {
+      if (localWebcamOn) {
+        meeting.disableWebcam();
+      } else {
+        meeting.enableWebcam();
+      }
+      setLocalWebcamOn(!localWebcamOn);
     }
+  };
 
+  const toggleMic = () => {
+    if (meeting) {
+      if (localMicOn) {
+        meeting.muteMic();
+      } else {
+        meeting.unmuteMic();
+      }
+      setLocalMicOn(!localMicOn);
+    }
+  };
+
+  const handleLeaveCall = async () => {
     try {
-      const currentIndex = availableWebcams.findIndex(
-        (webcam: WebcamDevice) => webcam.deviceId === selectedWebcamId
-      );
-      const nextIndex = (currentIndex + 1) % availableWebcams.length;
-      const nextWebcam = availableWebcams[nextIndex];
-
-      await changeWebcam(nextWebcam.deviceId);
-      setSelectedWebcamId(nextWebcam.deviceId);
-      console.log("Switched to camera:", nextWebcam.label);
+      setIsLeavingCall(true);
+      if (meeting) {
+        meeting.leave();
+      } else {
+        onLeave();
+      }
     } catch (error) {
-      console.error("Error switching camera:", error);
+      console.error("❌ Error leaving call:", error);
+      onLeave();
     }
   };
 
-  const renderParticipantsGrid = (): JSX.Element => {
-    const allParticipants: string[] = [...participants.keys()];
-    const totalParticipants = allParticipants.length;
-    
-    let gridClass = 'participants-grid';
-    if (totalParticipants <= 1) {
-      gridClass += ' participants-1';
-    } else if (totalParticipants === 2) {
-      gridClass += ' participants-2';
-    } else if (totalParticipants <= 4) {
-      gridClass += ' participants-4';
+  const handleDoubleClick = (participantId: string) => {
+    if (expandedParticipant === participantId) {
+      setExpandedParticipant(null);
     } else {
-      gridClass += ' participants-many';
+      setExpandedParticipant(participantId);
     }
+  };
 
-    if (totalParticipants === 0) {
-      return (
-        <div className={gridClass}>
-          <div className="waiting-room">
-            <div className="icon">👥</div>
-            <h2>Waiting for other participants...</h2>
-            <p>Share the room ID with others to join</p>
-          </div>
-        </div>
-      );
-    }
+  const ParticipantView = ({ 
+    participant, 
+    isLocal = false, 
+    isExpanded = false 
+  }: { 
+    participant: any; 
+    isLocal?: boolean; 
+    isExpanded?: boolean; 
+  }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const audioRef = useRef<HTMLAudioElement>(null);
+    const stream = participantStreams.get(participant.id);
+    const audioStream = audioStreams.get(participant.id);
+    const hasVideo = !!(stream && stream.track);
+
+    // Store refs for cleanup
+    useEffect(() => {
+      if (videoRef.current) {
+        videoElementRefs.current.set(participant.id, videoRef.current);
+      }
+      if (audioRef.current) {
+        audioElementRefs.current.set(participant.id, audioRef.current);
+      }
+      return () => {
+        videoElementRefs.current.delete(participant.id);
+        audioElementRefs.current.delete(participant.id);
+      };
+    }, [participant.id]);
+
+    // Attach video stream
+    useEffect(() => {
+      const el = videoRef.current;
+      if (!el) return;
+
+      if (stream?.track) {
+        const ms = new MediaStream([stream.track]);
+        el.srcObject = ms;
+        el.play().catch((error: Error) => {
+          console.warn("Video play failed:", error);
+        });
+      } else {
+        el.srcObject = null;
+      }
+    }, [stream]);
+
+    // Attach audio stream (only for remote participants)
+    useEffect(() => {
+      const el = audioRef.current;
+      if (!el || isLocal) return; // Don't play local audio to prevent echo
+
+      if (audioStream?.track) {
+        const ms = new MediaStream([audioStream.track]);
+        el.srcObject = ms;
+        el.play().catch((error: Error) => {
+          console.warn("Audio play failed:", error);
+        });
+      } else {
+        el.srcObject = null;
+      }
+    }, [audioStream, isLocal]);
 
     return (
-      <div className={gridClass}>
-        {/* Local Participant */}
-        {localParticipant && (
-          <div className="participant-wrapper">
-            <ParticipantView
-              participantId={localParticipant.id}
-              isLocal={true}
-              videoSDKComponents={videoSDKComponents}
-            />
-            {/* Camera switch button for local participant */}
-            {isCameraOn && availableWebcams.length > 1 && (
-              <button className="camera-switch" onClick={handleSwitchCamera}>
-                🔄
-              </button>
-            )}
+      <div 
+        className={`relative bg-gray-900 rounded-lg overflow-hidden ${
+          isExpanded ? 'fixed inset-4 z-40' : 'aspect-video'
+        } ${isLocal ? 'border-2 border-blue-500' : 'border border-gray-700'} 
+        cursor-pointer transition-all duration-200 hover:shadow-lg`}
+        onDoubleClick={() => handleDoubleClick(participant.id)}
+      >
+        {hasVideo ? (
+          <video
+            ref={videoRef}
+            className={`w-full h-full ${isExpanded ? 'object-contain' : 'object-cover'}`}
+            autoPlay
+            playsInline
+            muted={isLocal}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-800 to-gray-900">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                <span className="text-2xl font-bold text-white">
+                  {participant.displayName ? participant.displayName.charAt(0).toUpperCase() : '?'}
+                </span>
+              </div>
+              <p className="text-white text-lg font-medium">{participant.displayName || 'Unknown'}</p>
+              <p className="text-gray-400 text-sm mt-1">Camera is off</p>
+            </div>
           </div>
         )}
-        
-        {/* Remote Participants */}
-        {allParticipants.map((participantId: string) => (
-          participantId !== localParticipant?.id && (
-            <div key={participantId} className="participant-wrapper">
-              <ParticipantView
-                participantId={participantId}
-                videoSDKComponents={videoSDKComponents}
-              />
+
+        {/* Audio element for remote participants */}
+        {!isLocal && (
+          <audio
+            ref={audioRef}
+            autoPlay
+            playsInline
+          />
+        )}
+
+        {/* Participant info overlay */}
+        <div className="absolute bottom-3 left-3 right-3">
+          <div className="bg-black bg-opacity-60 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center justify-between">
+            <span className="text-white text-sm font-medium truncate">
+              {isLocal ? 'You' : participant.displayName || 'Unknown'}
+            </span>
+            <div className="flex items-center space-x-2 ml-2">
+              {!localMicOn && isLocal && (
+                <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                  </svg>
+                </div>
+              )}
+              {!hasVideo && (
+                <div className="w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
+                  </svg>
+                </div>
+              )}
             </div>
-          )
-        ))}
+          </div>
+        </div>
+
+        {/* Expand/collapse button */}
+        {hasVideo && (
+          <button
+            className="absolute top-3 right-3 bg-black bg-opacity-60 backdrop-blur-sm rounded-lg p-2 text-white hover:bg-opacity-80 transition-all"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDoubleClick(participant.id);
+            }}
+          >
+            {isExpanded ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M15 15v4.5M15 15h4.5M15 15l5.25 5.25" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+              </svg>
+            )}
+          </button>
+        )}
       </div>
     );
   };
 
-  return (
-    <div className="container">
-      {joined && joined === "JOINED" ? (
-        <>
-          {/* Header */}
-          <div className="header">
-            <h1>Wellness Video Call</h1>
-            <div className="room-info">Room: {meetingId}</div>
-            <div className="participant-count">
-              {participants.size + 1} participant{participants.size !== 0 ? 's' : ''}
-            </div>
-          </div>
-
-          {/* Video Container */}
-          <div className="video-container">
-            {renderParticipantsGrid()}
-          </div>
-
-          {/* Controls */}
-          <div className="controls">
-            <button
-              className={`control-btn ${!isMicOn ? 'muted' : ''}`}
-              onClick={handleToggleMic}
-              title="Toggle Microphone"
-              disabled={isLeavingCall}
-            >
-              {isMicOn ? '🎤' : '🔇'}
-            </button>
-            <button
-              className={`control-btn ${!isCameraOn ? 'muted' : ''}`}
-              onClick={handleToggleCamera}
-              title="Toggle Camera"
-              disabled={isLeavingCall}
-            >
-              {isCameraOn ? '📹' : '📵'}
-            </button>
-            <button
-              className="control-btn"
-              onClick={handleSwitchCamera}
-              disabled={!isCameraOn || availableWebcams.length < 2 || isLeavingCall}
-              title="Switch Camera"
-            >
-              🔄
-            </button>
-            <button
-              className="control-btn end-call"
-              onClick={leaveMeeting}
-              title="End Call"
-              disabled={isLeavingCall}
-            >
-              {isLeavingCall ? '⏳' : '📞'}
-            </button>
-          </div>
-        </>
-      ) : joined && joined === "JOINING" ? (
-        <div className="container">
-          <div className="video-container">
-            <div className="participants-grid participants-1">
-              <div className="waiting-room">
-                <div className="spinner"></div>
-                <h2>Connecting to video call...</h2>
-                <p>Please wait while we connect you to the meeting</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : joined && joined === "ERROR" ? (
-        <div className="container">
-          <div className="video-container">
-            <div className="participants-grid participants-1">
-              <div className="error-container">
-                <div className="icon">⚠️</div>
-                <h2>Connection Error</h2>
-                <p>Failed to join the video call. Please check your internet connection and try again.</p>
-                <button className="retry-btn" onClick={joinMeeting}>
-                  Try Again
-                </button>
-                <button className="retry-btn secondary" onClick={() => window.close()}>
-                  Close Window
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : joined && joined === "LEFT" ? (
-        <div className="container">
-          <div className="video-container">
-            <div className="participants-grid participants-1">
-              <div className="waiting-room">
-                <div className="icon">👋</div>
-                <h2>Call Ended</h2>
-                <p>You have left the video call. You can close this window now.</p>
-                <button className="retry-btn secondary" onClick={() => window.close()}>
-                  Close Window
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="container">
-          <div className="video-container">
-            <div className="participants-grid participants-1">
-              <div className="waiting-room">
-                <div className="icon">🎥</div>
-                <h2>Ready to Join</h2>
-                <p>Click the button below to join the video call</p>
-                <button className="retry-btn" onClick={joinMeeting}>
-                  Join Call
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Participant View Component
-const ParticipantView: React.FC<ParticipantViewProps & { videoSDKComponents?: any }> = ({
-  participantId,
-  isLocal = false,
-  videoSDKComponents
-}) => {
-  const webcamRef = useRef<HTMLVideoElement>(null);
-  const micRef = useRef<HTMLAudioElement>(null);
-
-  if (!videoSDKComponents) {
+  // Error state
+  if (connectionError) {
     return (
-      <div className="participant">
-        <div className="no-video-placeholder">
-          <div className="spinner"></div>
-          <div>Loading...</div>
+      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
+          <div className="text-center">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Connection Error</h3>
+            <p className="text-gray-600 mb-4">{connectionError}</p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setConnectionError(null);
+                  setIsConnecting(true);
+                  window.location.reload();
+                }}
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Try Again
+              </button>
+              <button
+                onClick={onLeave}
+                className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  const { useParticipant } = videoSDKComponents;
-
-  const {
-    webcamStream,
-    micStream,
-    webcamOn,
-    micOn,
-    isLocal: participantIsLocal,
-    displayName,
-    setQuality
-  } = useParticipant(participantId, {
-    onStreamEnabled: (stream: any) => {
-      console.log(`Stream enabled for ${participantId}:`, stream.kind);
-      if (stream.kind === 'video') {
-        if (webcamRef.current) {
-          const mediaStream = new MediaStream();
-          mediaStream.addTrack(stream.track);
-          webcamRef.current.srcObject = mediaStream;
-          webcamRef.current.play().catch((error: Error) => {
-            console.error("Error playing video:", error);
-          });
-        }
-      }
-      if (stream.kind === 'audio') {
-        if (micRef.current) {
-          const mediaStream = new MediaStream();
-          mediaStream.addTrack(stream.track);
-          micRef.current.srcObject = mediaStream;
-          micRef.current.play().catch((error: Error) => {
-            console.error("Error playing audio:", error);
-          });
-        }
-      }
-    },
-    onStreamDisabled: (stream: any) => {
-      console.log(`Stream disabled for ${participantId}:`, stream.kind);
-      if (stream.kind === 'video' && webcamRef.current) {
-        webcamRef.current.srcObject = null;
-      }
-      if (stream.kind === 'audio' && micRef.current) {
-        micRef.current.srcObject = null;
-      }
-    },
-  });
-
-  useEffect(() => {
-    // Set video quality for better performance
-    if (webcamOn && setQuality) {
-      setQuality("med");
-    }
-  }, [webcamOn, setQuality]);
+  const participantArray = Array.from(participants.values());
+  const totalParticipants = participantArray.length;
 
   return (
-    <div className={`participant ${isLocal ? 'local' : ''}`}>
-      {webcamOn && webcamStream ? (
-        <div className="video-container">
-          <video
-            ref={webcamRef}
-            autoPlay
-            playsInline
-            muted={isLocal}
-            className="participant-video"
-          />
-        </div>
-      ) : (
-        <div className="no-video-placeholder">
-          <div className="avatar-placeholder">
-            {displayName ? displayName.charAt(0).toUpperCase() : '?'}
-          </div>
-          <div className="participant-name">{displayName || 'Unknown'}</div>
-          <div className="no-video-text">
-            {webcamOn ? 'Connecting video...' : 'Camera is off'}
-          </div>
-        </div>
-      )}
+    <div className="fixed inset-0 bg-black bg-opacity-95 flex flex-col z-50 overflow-hidden">
+      {/* Global Styles */}
+      <style jsx global>{`
+        body {
+          margin: 0;
+          padding: 0;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        }
+      `}</style>
       
-      {/* Audio element for remote participants */}
-      {!isLocal && micStream && (
-        <audio ref={micRef} autoPlay playsInline />
-      )}
-      
-      <div className="participant-info">
-        {isLocal ? (
-          <>
-            <span className="status-icon"></span>
-            You
-          </>
+      {/* Header */}
+      <div className="bg-gray-900 p-4 flex items-center justify-between flex-shrink-0 border-b border-gray-700">
+        <div>
+          <h2 className="text-white font-semibold text-lg">Video Call</h2>
+          <p className="text-gray-400 text-sm">
+            {isConnecting ? 'Connecting...' : 
+             isLeavingCall ? 'Ending call...' :
+             `${totalParticipants + 1} participant${totalParticipants !== 0 ? 's' : ''}`}
+          </p>
+        </div>
+        <button
+          onClick={onLeave}
+          className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-800"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Video Grid */}
+      <div className="flex-1 p-4 min-h-0 overflow-hidden">
+        {isConnecting ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-white text-lg">Connecting to video call...</p>
+              <p className="text-gray-400 text-sm mt-1">Please wait while we connect you</p>
+            </div>
+          </div>
+        ) : isLeavingCall ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+              <p className="text-white text-lg">Ending call...</p>
+            </div>
+          </div>
         ) : (
-          displayName || 'Unknown'
+          <div className="h-full relative">
+            {/* Expanded participant overlay */}
+            {expandedParticipant && (
+              <div className="absolute inset-0 z-30 bg-black bg-opacity-90">
+                {meeting && meeting.localParticipant && expandedParticipant === meeting.localParticipant.id && (
+                  <ParticipantView
+                    key={`expanded-local-${meeting.localParticipant.id}`}
+                    participant={meeting.localParticipant}
+                    isLocal
+                    isExpanded
+                  />
+                )}
+                {remoteParticipants.map((participant: any) => 
+                  expandedParticipant === participant.id && (
+                    <ParticipantView
+                      key={`expanded-remote-${participant.id}`}
+                      participant={participant}
+                      isLocal={false}
+                      isExpanded
+                    />
+                  )
+                )}
+              </div>
+            )}
+
+            {/* Single participant or waiting state */}
+            {remoteParticipants.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-1a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <p className="text-white text-xl font-medium">Waiting for participants...</p>
+                  <p className="text-gray-400 text-sm mt-2">Share the room ID with others to join</p>
+                  {/* Show local video while waiting */}
+                  {meeting && meeting.localParticipant && (
+                    <div className="mt-8 max-w-md mx-auto">
+                      <ParticipantView
+                        key={`local-waiting-${meeting.localParticipant.id}`}
+                        participant={meeting.localParticipant}
+                        isLocal
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Multiple participants grid */
+              <div className={`grid gap-4 h-full ${
+                remoteParticipants.length + 1 <= 2 ? 'grid-cols-1 lg:grid-cols-2' : 
+                remoteParticipants.length + 1 <= 4 ? 'grid-cols-2' : 
+                'grid-cols-2 lg:grid-cols-3'
+              } max-h-[calc(100vh-200px)] overflow-hidden`}>
+                {/* Local participant tile */}
+                {meeting && meeting.localParticipant && (
+                  <ParticipantView
+                    key={`local-${meeting.localParticipant.id}`}
+                    participant={meeting.localParticipant}
+                    isLocal
+                  />
+                )}
+
+                {/* Remote participants */}
+                {remoteParticipants.map((participant: any) => (
+                  <ParticipantView
+                    key={`remote-${participant.id}`}
+                    participant={participant}
+                    isLocal={false}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         )}
-        {!micOn && <span className="status-icon muted">🔇</span>}
+      </div>
+
+      {/* Controls */}
+      <div className="bg-gray-900 p-6 border-t border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-center space-x-8">
+          {/* Microphone */}
+          <button
+            onClick={toggleMic}
+            disabled={isConnecting || isLeavingCall}
+            className={`p-4 rounded-full transition-all duration-200 ${
+              localMicOn 
+                ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                : 'bg-red-600 hover:bg-red-700 text-white'
+            } disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105`}
+            title={localMicOn ? 'Mute microphone' : 'Unmute microphone'}
+          >
+            {localMicOn ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+              </svg>
+            )}
+          </button>
+
+          {/* Camera */}
+          <button
+            onClick={toggleWebcam}
+            disabled={isConnecting || isLeavingCall}
+            className={`p-4 rounded-full transition-all duration-200 ${
+              localWebcamOn 
+                ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                : 'bg-red-600 hover:bg-red-700 text-white'
+            } disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105`}
+            title={localWebcamOn ? 'Turn off camera' : 'Turn on camera'}
+          >
+            {localWebcamOn ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
+              </svg>
+            )}
+          </button>
+
+          {/* End Call */}
+          <button
+            onClick={handleLeaveCall}
+            disabled={isLeavingCall}
+            className="p-4 rounded-full bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:scale-105"
+            title="End call"
+          >
+            {isLeavingCall ? (
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+            ) : (
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 3l18 18" />
+              </svg>
+            )}
+          </button>
+        </div>
+        
+        {/* Call info */}
+        <div className="text-center mt-4">
+          <p className="text-gray-400 text-sm">
+            Room ID: <span className="font-mono font-medium">{roomId}</span> • 
+            {remoteParticipants.length + 1} participant{remoteParticipants.length !== 0 ? 's' : ''}
+          </p>
+          <p className="text-gray-500 text-xs mt-1">
+            Double-click any video to expand • Audio should work automatically
+          </p>
+        </div>
       </div>
     </div>
   );
