@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useEffect, useRef, useCallback, JSX } from 'react';
-import { MeetingProvider, useMeeting, useParticipant } from "@videosdk.live/react-sdk";
+import React, { useState, useEffect, useRef, JSX } from 'react';
+import dynamic from 'next/dynamic';
 
 // VideoSDK Configuration - Update these with your actual values
 const VIDEOSDK_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGlrZXkiOiJkMzFmYjVjZi1iYzFkLTRmMjQtYjg1Ni05OTVlZTgzMjY2MDAiLCJwZXJtaXNzaW9ucyI6WyJhbGxvd19qb2luIl0sImlhdCI6MTc1NTQyOTQ4MSwiZXhwIjoxOTEzMjE3NDgxfQ.PDGqipQbZ8B_gd1Emys5pFjkC7IOGrwvRq418fNhL1Y";
@@ -16,387 +16,67 @@ interface WebcamDevice {
   label: string;
 }
 
-const ParticipantView: React.FC<ParticipantViewProps> = ({ participantId, isLocal = false }) => {
-  const webcamRef = useRef<HTMLVideoElement>(null);
-  const micRef = useRef<HTMLAudioElement>(null);
-  
-  const {
-    webcamStream,
-    micStream,
-    webcamOn,
-    micOn,
-    isLocal: participantIsLocal,
-    displayName,
-    setQuality
-  } = useParticipant(participantId, {
-    onStreamEnabled: (stream: any) => {
-      console.log(`Stream enabled for ${participantId}:`, stream.kind);
-      if (stream.kind === 'video') {
-        if (webcamRef.current) {
-          const mediaStream = new MediaStream();
-          mediaStream.addTrack(stream.track);
-          webcamRef.current.srcObject = mediaStream;
-          webcamRef.current.play().catch((error: Error) => {
-            console.error("Error playing video:", error);
-          });
-        }
-      }
-      if (stream.kind === 'audio') {
-        if (micRef.current) {
-          const mediaStream = new MediaStream();
-          mediaStream.addTrack(stream.track);
-          micRef.current.srcObject = mediaStream;
-          micRef.current.play().catch((error: Error) => {
-            console.error("Error playing audio:", error);
-          });
-        }
-      }
-    },
-    onStreamDisabled: (stream: any) => {
-      console.log(`Stream disabled for ${participantId}:`, stream.kind);
-      if (stream.kind === 'video' && webcamRef.current) {
-        webcamRef.current.srcObject = null;
-      }
-      if (stream.kind === 'audio' && micRef.current) {
-        micRef.current.srcObject = null;
-      }
-    },
-  });
-
-  useEffect(() => {
-    // Set video quality for better performance
-    if (webcamOn && setQuality) {
-      setQuality("med");
-    }
-  }, [webcamOn, setQuality]);
-
-  return (
-    <div className={`participant ${isLocal ? 'local' : ''}`}>
-      {webcamOn && webcamStream ? (
-        <div className="video-container">
-          <video
-            ref={webcamRef}
-            autoPlay
-            playsInline
-            muted={isLocal}
-            className="participant-video"
-          />
+// Loading component
+const LoadingComponent = () => (
+  <div className="container">
+    <div className="video-container">
+      <div className="participants-grid participants-1">
+        <div className="waiting-room">
+          <div className="spinner"></div>
+          <h2>Loading video call...</h2>
+          <p>Please wait while we initialize the video components</p>
         </div>
-      ) : (
-        <div className="no-video-placeholder">
-          <div className="avatar-placeholder">
-            {displayName ? displayName.charAt(0).toUpperCase() : '?'}
-          </div>
-          <div className="participant-name">{displayName || 'Unknown'}</div>
-          <div className="no-video-text">
-            {webcamOn ? 'Connecting video...' : 'Camera is off'}
-          </div>
-        </div>
-      )}
-      
-      {/* Audio element for remote participants */}
-      {!isLocal && micStream && (
-        <audio ref={micRef} autoPlay playsInline />
-      )}
-      
-      <div className="participant-info">
-        {isLocal ? (
-          <>
-            <span className="status-icon"></span>
-            You
-          </>
-        ) : (
-          displayName || 'Unknown'
-        )}
-        {!micOn && <span className="status-icon muted">🔇</span>}
       </div>
     </div>
-  );
-};
+  </div>
+);
 
-const MeetingView: React.FC = () => {
-  const [joined, setJoined] = useState<string | null>(null);
-  const [isCameraOn, setIsCameraOn] = useState<boolean>(true);
-  const [isMicOn, setIsMicOn] = useState<boolean>(true);
-  const [availableWebcams, setAvailableWebcams] = useState<WebcamDevice[]>([]);
-  const [selectedWebcamId, setSelectedWebcamId] = useState<string | null>(null);
-  const [isLeavingCall, setIsLeavingCall] = useState<boolean>(false);
-
-  const {
-    join,
-    leave,
-    toggleMic,
-    toggleWebcam,
-    changeWebcam,
-    getWebcams,
-    participants,
-    localParticipant,
-    meetingId
-  } = useMeeting({
-    onMeetingJoined: async () => {
-      console.log("Meeting Joined Successfully");
-      setJoined("JOINED");
-      
-      // Get available webcams
-      try {
-        const webcams: WebcamDevice[] = await getWebcams();
-        setAvailableWebcams(webcams);
-        console.log("Available webcams:", webcams);
-        
-        // Set default webcam (preferably front camera)
-        const frontCamera = webcams.find((cam: WebcamDevice) => 
-          cam.label.toLowerCase().includes('front') || 
-          cam.label.toLowerCase().includes('user')
-        ) || webcams[0];
-        
-        if (frontCamera) {
-          setSelectedWebcamId(frontCamera.deviceId);
-        }
-      } catch (error) {
-        console.warn("Could not get webcams:", error);
-      }
-    },
-    onMeetingLeft: () => {
-      console.log("Meeting Left");
-      setJoined("LEFT");
-      setIsLeavingCall(false);
-    },
-    onError: (error: any) => {
-      console.error("Meeting Error:", error);
-      setJoined("ERROR");
-      setIsLeavingCall(false);
-    },
-    onParticipantJoined: (participant: any) => {
-      console.log("Participant Joined:", participant);
-    },
-    onParticipantLeft: (participant: any) => {
-      console.log("Participant Left:", participant);
-    },
-  });
-
-  const joinMeeting = (): void => {
-    setJoined("JOINING");
-    join();
-  };
-
-  const leaveMeeting = (): void => {
-    setIsLeavingCall(true);
-    leave();
-  };
-
-  const handleToggleMic = (): void => {
-    toggleMic();
-    setIsMicOn(!isMicOn);
-  };
-
-  const handleToggleCamera = (): void => {
-    toggleWebcam();
-    setIsCameraOn(!isCameraOn);
-  };
-
-  const handleSwitchCamera = async (): Promise<void> => {
-    if (availableWebcams.length < 2) {
-      console.log("No alternative camera available");
-      return;
-    }
-
-    try {
-      const currentIndex = availableWebcams.findIndex(
-        (webcam: WebcamDevice) => webcam.deviceId === selectedWebcamId
-      );
-      const nextIndex = (currentIndex + 1) % availableWebcams.length;
-      const nextWebcam = availableWebcams[nextIndex];
-
-      await changeWebcam(nextWebcam.deviceId);
-      setSelectedWebcamId(nextWebcam.deviceId);
-      console.log("Switched to camera:", nextWebcam.label);
-    } catch (error) {
-      console.error("Error switching camera:", error);
-    }
-  };
-
-  const renderParticipantsGrid = (): JSX.Element => {
-    const allParticipants: string[] = [...participants.keys()];
-    const totalParticipants = allParticipants.length;
-    
-    let gridClass = 'participants-grid';
-    if (totalParticipants <= 1) {
-      gridClass += ' participants-1';
-    } else if (totalParticipants === 2) {
-      gridClass += ' participants-2';
-    } else if (totalParticipants <= 4) {
-      gridClass += ' participants-4';
-    } else {
-      gridClass += ' participants-many';
-    }
-
-    if (totalParticipants === 0) {
-      return (
-        <div className={gridClass}>
-          <div className="waiting-room">
-            <div className="icon">👥</div>
-            <h2>Waiting for other participants...</h2>
-            <p>Share the room ID with others to join</p>
-          </div>
+// Error component
+const ErrorComponent = ({ error }: { error: string }) => (
+  <div className="container">
+    <div className="video-container">
+      <div className="participants-grid participants-1">
+        <div className="error-container">
+          <div className="icon">⚠️</div>
+          <h2>Configuration Error</h2>
+          <p>{error}</p>
+          <button className="retry-btn secondary" onClick={() => window.close()}>
+            Close Window
+          </button>
         </div>
-      );
-    }
-
-    return (
-      <div className={gridClass}>
-        {/* Local Participant */}
-        {localParticipant && (
-          <div className="participant-wrapper">
-            <ParticipantView participantId={localParticipant.id} isLocal={true} />
-            {/* Camera switch button for local participant */}
-            {isCameraOn && availableWebcams.length > 1 && (
-              <button className="camera-switch" onClick={handleSwitchCamera}>
-                🔄
-              </button>
-            )}
-          </div>
-        )}
-        
-        {/* Remote Participants */}
-        {allParticipants.map((participantId: string) => (
-          participantId !== localParticipant?.id && (
-            <div key={participantId} className="participant-wrapper">
-              <ParticipantView participantId={participantId} />
-            </div>
-          )
-        ))}
       </div>
-    );
-  };
-
-  return (
-    <div className="container">
-      {joined && joined === "JOINED" ? (
-        <>
-          {/* Header */}
-          <div className="header">
-            <h1>Wellness Video Call</h1>
-            <div className="room-info">Room: {meetingId}</div>
-            <div className="participant-count">
-              {participants.size + 1} participant{participants.size !== 0 ? 's' : ''}
-            </div>
-          </div>
-
-          {/* Video Container */}
-          <div className="video-container">
-            {renderParticipantsGrid()}
-          </div>
-
-          {/* Controls */}
-          <div className="controls">
-            <button
-              className={`control-btn ${!isMicOn ? 'muted' : ''}`}
-              onClick={handleToggleMic}
-              title="Toggle Microphone"
-              disabled={isLeavingCall}
-            >
-              {isMicOn ? '🎤' : '🔇'}
-            </button>
-            <button
-              className={`control-btn ${!isCameraOn ? 'muted' : ''}`}
-              onClick={handleToggleCamera}
-              title="Toggle Camera"
-              disabled={isLeavingCall}
-            >
-              {isCameraOn ? '📹' : '📵'}
-            </button>
-            <button
-              className="control-btn"
-              onClick={handleSwitchCamera}
-              disabled={!isCameraOn || availableWebcams.length < 2 || isLeavingCall}
-              title="Switch Camera"
-            >
-              🔄
-            </button>
-            <button
-              className="control-btn end-call"
-              onClick={leaveMeeting}
-              title="End Call"
-              disabled={isLeavingCall}
-            >
-              {isLeavingCall ? '⏳' : '📞'}
-            </button>
-          </div>
-        </>
-      ) : joined && joined === "JOINING" ? (
-        <div className="container">
-          <div className="video-container">
-            <div className="participants-grid participants-1">
-              <div className="waiting-room">
-                <div className="spinner"></div>
-                <h2>Connecting to video call...</h2>
-                <p>Please wait while we connect you to the meeting</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : joined && joined === "ERROR" ? (
-        <div className="container">
-          <div className="video-container">
-            <div className="participants-grid participants-1">
-              <div className="error-container">
-                <div className="icon">⚠️</div>
-                <h2>Connection Error</h2>
-                <p>Failed to join the video call. Please check your internet connection and try again.</p>
-                <button className="retry-btn" onClick={joinMeeting}>
-                  Try Again
-                </button>
-                <button className="retry-btn secondary" onClick={() => window.close()}>
-                  Close Window
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : joined && joined === "LEFT" ? (
-        <div className="container">
-          <div className="video-container">
-            <div className="participants-grid participants-1">
-              <div className="waiting-room">
-                <div className="icon">👋</div>
-                <h2>Call Ended</h2>
-                <p>You have left the video call. You can close this window now.</p>
-                <button className="retry-btn secondary" onClick={() => window.close()}>
-                  Close Window
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="container">
-          <div className="video-container">
-            <div className="participants-grid participants-1">
-              <div className="waiting-room">
-                <div className="icon">🎥</div>
-                <h2>Ready to Join</h2>
-                <p>Click the button below to join the video call</p>
-                <button className="retry-btn" onClick={joinMeeting}>
-                  Join Call
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  );
-};
+  </div>
+);
 
-const VideoCallApp: React.FC = () => {
+// Video Call Main Component (client-side only)
+const VideoCallMainComponent = () => {
   const [meetingId, setMeetingId] = useState<string>('');
   const [token, setToken] = useState<string>('');
   const [participantName, setParticipantName] = useState<string>('User');
   const [participantId, setParticipantId] = useState<string>('');
   const [initialized, setInitialized] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [videoSDKComponents, setVideoSDKComponents] = useState<any>(null);
+
+  // Load VideoSDK components dynamically
+  useEffect(() => {
+    const loadVideoSDK = async () => {
+      try {
+        const { MeetingProvider, useMeeting, useParticipant } = await import("@videosdk.live/react-sdk");
+        setVideoSDKComponents({ MeetingProvider, useMeeting, useParticipant });
+      } catch (error) {
+        console.error('Failed to load VideoSDK:', error);
+        setError('Failed to load video call components');
+      }
+    };
+
+    loadVideoSDK();
+  }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     // Get parameters from URL
     const urlParams = new URLSearchParams(window.location.search);
     const meetingIdParam = urlParams.get('meetingId') || urlParams.get('roomId');
@@ -807,44 +487,47 @@ const VideoCallApp: React.FC = () => {
     document.head.appendChild(style);
 
     return () => {
-      document.head.removeChild(style);
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
     };
   }, []);
 
   if (error) {
-    return (
-      <div className="container">
-        <div className="video-container">
-          <div className="participants-grid participants-1">
-            <div className="error-container">
-              <div className="icon">⚠️</div>
-              <h2>Configuration Error</h2>
-              <p>{error}</p>
-              <button className="retry-btn secondary" onClick={() => window.close()}>
-                Close Window
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <ErrorComponent error={error} />;
   }
 
-  if (!initialized) {
-    return (
-      <div className="container">
-        <div className="video-container">
-          <div className="participants-grid participants-1">
-            <div className="waiting-room">
-              <div className="spinner"></div>
-              <h2>Initializing...</h2>
-              <p>Setting up video call</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  if (!initialized || !videoSDKComponents) {
+    return <LoadingComponent />;
   }
+
+  // Render the actual video call component
+  return (
+    <VideoCallWithSDK
+      meetingId={meetingId}
+      token={token}
+      participantName={participantName}
+      participantId={participantId}
+      videoSDKComponents={videoSDKComponents}
+    />
+  );
+};
+
+// Video Call Component with loaded VideoSDK
+const VideoCallWithSDK = ({
+  meetingId,
+  token,
+  participantName,
+  participantId,
+  videoSDKComponents
+}: {
+  meetingId: string;
+  token: string;
+  participantName: string;
+  participantId: string;
+  videoSDKComponents: any;
+}) => {
+  const { MeetingProvider } = videoSDKComponents;
 
   return (
     <MeetingProvider
@@ -858,9 +541,415 @@ const VideoCallApp: React.FC = () => {
       }}
       token={token}
     >
-      <MeetingView />
+      <MeetingView videoSDKComponents={videoSDKComponents} />
     </MeetingProvider>
   );
 };
+
+// Meeting View Component
+const MeetingView = ({ videoSDKComponents }: { videoSDKComponents: any }) => {
+  const [joined, setJoined] = useState<string | null>(null);
+  const [isCameraOn, setIsCameraOn] = useState<boolean>(true);
+  const [isMicOn, setIsMicOn] = useState<boolean>(true);
+  const [availableWebcams, setAvailableWebcams] = useState<WebcamDevice[]>([]);
+  const [selectedWebcamId, setSelectedWebcamId] = useState<string | null>(null);
+  const [isLeavingCall, setIsLeavingCall] = useState<boolean>(false);
+
+  const { useMeeting } = videoSDKComponents;
+
+  const {
+    join,
+    leave,
+    toggleMic,
+    toggleWebcam,
+    changeWebcam,
+    getWebcams,
+    participants,
+    localParticipant,
+    meetingId
+  } = useMeeting({
+    onMeetingJoined: async () => {
+      console.log("Meeting Joined Successfully");
+      setJoined("JOINED");
+      
+      // Get available webcams
+      try {
+        const webcams: WebcamDevice[] = await getWebcams();
+        setAvailableWebcams(webcams);
+        console.log("Available webcams:", webcams);
+        
+        // Set default webcam (preferably front camera)
+        const frontCamera = webcams.find((cam: WebcamDevice) => 
+          cam.label.toLowerCase().includes('front') || 
+          cam.label.toLowerCase().includes('user')
+        ) || webcams[0];
+        
+        if (frontCamera) {
+          setSelectedWebcamId(frontCamera.deviceId);
+        }
+      } catch (error) {
+        console.warn("Could not get webcams:", error);
+      }
+    },
+    onMeetingLeft: () => {
+      console.log("Meeting Left");
+      setJoined("LEFT");
+      setIsLeavingCall(false);
+    },
+    onError: (error: any) => {
+      console.error("Meeting Error:", error);
+      setJoined("ERROR");
+      setIsLeavingCall(false);
+    },
+    onParticipantJoined: (participant: any) => {
+      console.log("Participant Joined:", participant);
+    },
+    onParticipantLeft: (participant: any) => {
+      console.log("Participant Left:", participant);
+    },
+  });
+
+  const joinMeeting = (): void => {
+    setJoined("JOINING");
+    join();
+  };
+
+  const leaveMeeting = (): void => {
+    setIsLeavingCall(true);
+    leave();
+  };
+
+  const handleToggleMic = (): void => {
+    toggleMic();
+    setIsMicOn(!isMicOn);
+  };
+
+  const handleToggleCamera = (): void => {
+    toggleWebcam();
+    setIsCameraOn(!isCameraOn);
+  };
+
+  const handleSwitchCamera = async (): Promise<void> => {
+    if (availableWebcams.length < 2) {
+      console.log("No alternative camera available");
+      return;
+    }
+
+    try {
+      const currentIndex = availableWebcams.findIndex(
+        (webcam: WebcamDevice) => webcam.deviceId === selectedWebcamId
+      );
+      const nextIndex = (currentIndex + 1) % availableWebcams.length;
+      const nextWebcam = availableWebcams[nextIndex];
+
+      await changeWebcam(nextWebcam.deviceId);
+      setSelectedWebcamId(nextWebcam.deviceId);
+      console.log("Switched to camera:", nextWebcam.label);
+    } catch (error) {
+      console.error("Error switching camera:", error);
+    }
+  };
+
+  const renderParticipantsGrid = (): JSX.Element => {
+    const allParticipants: string[] = [...participants.keys()];
+    const totalParticipants = allParticipants.length;
+    
+    let gridClass = 'participants-grid';
+    if (totalParticipants <= 1) {
+      gridClass += ' participants-1';
+    } else if (totalParticipants === 2) {
+      gridClass += ' participants-2';
+    } else if (totalParticipants <= 4) {
+      gridClass += ' participants-4';
+    } else {
+      gridClass += ' participants-many';
+    }
+
+    if (totalParticipants === 0) {
+      return (
+        <div className={gridClass}>
+          <div className="waiting-room">
+            <div className="icon">👥</div>
+            <h2>Waiting for other participants...</h2>
+            <p>Share the room ID with others to join</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className={gridClass}>
+        {/* Local Participant */}
+        {localParticipant && (
+          <div className="participant-wrapper">
+            <ParticipantView
+              participantId={localParticipant.id}
+              isLocal={true}
+              videoSDKComponents={videoSDKComponents}
+            />
+            {/* Camera switch button for local participant */}
+            {isCameraOn && availableWebcams.length > 1 && (
+              <button className="camera-switch" onClick={handleSwitchCamera}>
+                🔄
+              </button>
+            )}
+          </div>
+        )}
+        
+        {/* Remote Participants */}
+        {allParticipants.map((participantId: string) => (
+          participantId !== localParticipant?.id && (
+            <div key={participantId} className="participant-wrapper">
+              <ParticipantView
+                participantId={participantId}
+                videoSDKComponents={videoSDKComponents}
+              />
+            </div>
+          )
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="container">
+      {joined && joined === "JOINED" ? (
+        <>
+          {/* Header */}
+          <div className="header">
+            <h1>Wellness Video Call</h1>
+            <div className="room-info">Room: {meetingId}</div>
+            <div className="participant-count">
+              {participants.size + 1} participant{participants.size !== 0 ? 's' : ''}
+            </div>
+          </div>
+
+          {/* Video Container */}
+          <div className="video-container">
+            {renderParticipantsGrid()}
+          </div>
+
+          {/* Controls */}
+          <div className="controls">
+            <button
+              className={`control-btn ${!isMicOn ? 'muted' : ''}`}
+              onClick={handleToggleMic}
+              title="Toggle Microphone"
+              disabled={isLeavingCall}
+            >
+              {isMicOn ? '🎤' : '🔇'}
+            </button>
+            <button
+              className={`control-btn ${!isCameraOn ? 'muted' : ''}`}
+              onClick={handleToggleCamera}
+              title="Toggle Camera"
+              disabled={isLeavingCall}
+            >
+              {isCameraOn ? '📹' : '📵'}
+            </button>
+            <button
+              className="control-btn"
+              onClick={handleSwitchCamera}
+              disabled={!isCameraOn || availableWebcams.length < 2 || isLeavingCall}
+              title="Switch Camera"
+            >
+              🔄
+            </button>
+            <button
+              className="control-btn end-call"
+              onClick={leaveMeeting}
+              title="End Call"
+              disabled={isLeavingCall}
+            >
+              {isLeavingCall ? '⏳' : '📞'}
+            </button>
+          </div>
+        </>
+      ) : joined && joined === "JOINING" ? (
+        <div className="container">
+          <div className="video-container">
+            <div className="participants-grid participants-1">
+              <div className="waiting-room">
+                <div className="spinner"></div>
+                <h2>Connecting to video call...</h2>
+                <p>Please wait while we connect you to the meeting</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : joined && joined === "ERROR" ? (
+        <div className="container">
+          <div className="video-container">
+            <div className="participants-grid participants-1">
+              <div className="error-container">
+                <div className="icon">⚠️</div>
+                <h2>Connection Error</h2>
+                <p>Failed to join the video call. Please check your internet connection and try again.</p>
+                <button className="retry-btn" onClick={joinMeeting}>
+                  Try Again
+                </button>
+                <button className="retry-btn secondary" onClick={() => window.close()}>
+                  Close Window
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : joined && joined === "LEFT" ? (
+        <div className="container">
+          <div className="video-container">
+            <div className="participants-grid participants-1">
+              <div className="waiting-room">
+                <div className="icon">👋</div>
+                <h2>Call Ended</h2>
+                <p>You have left the video call. You can close this window now.</p>
+                <button className="retry-btn secondary" onClick={() => window.close()}>
+                  Close Window
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="container">
+          <div className="video-container">
+            <div className="participants-grid participants-1">
+              <div className="waiting-room">
+                <div className="icon">🎥</div>
+                <h2>Ready to Join</h2>
+                <p>Click the button below to join the video call</p>
+                <button className="retry-btn" onClick={joinMeeting}>
+                  Join Call
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Participant View Component
+const ParticipantView: React.FC<ParticipantViewProps & { videoSDKComponents?: any }> = ({
+  participantId,
+  isLocal = false,
+  videoSDKComponents
+}) => {
+  const webcamRef = useRef<HTMLVideoElement>(null);
+  const micRef = useRef<HTMLAudioElement>(null);
+
+  if (!videoSDKComponents) {
+    return (
+      <div className="participant">
+        <div className="no-video-placeholder">
+          <div className="spinner"></div>
+          <div>Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  const { useParticipant } = videoSDKComponents;
+
+  const {
+    webcamStream,
+    micStream,
+    webcamOn,
+    micOn,
+    isLocal: participantIsLocal,
+    displayName,
+    setQuality
+  } = useParticipant(participantId, {
+    onStreamEnabled: (stream: any) => {
+      console.log(`Stream enabled for ${participantId}:`, stream.kind);
+      if (stream.kind === 'video') {
+        if (webcamRef.current) {
+          const mediaStream = new MediaStream();
+          mediaStream.addTrack(stream.track);
+          webcamRef.current.srcObject = mediaStream;
+          webcamRef.current.play().catch((error: Error) => {
+            console.error("Error playing video:", error);
+          });
+        }
+      }
+      if (stream.kind === 'audio') {
+        if (micRef.current) {
+          const mediaStream = new MediaStream();
+          mediaStream.addTrack(stream.track);
+          micRef.current.srcObject = mediaStream;
+          micRef.current.play().catch((error: Error) => {
+            console.error("Error playing audio:", error);
+          });
+        }
+      }
+    },
+    onStreamDisabled: (stream: any) => {
+      console.log(`Stream disabled for ${participantId}:`, stream.kind);
+      if (stream.kind === 'video' && webcamRef.current) {
+        webcamRef.current.srcObject = null;
+      }
+      if (stream.kind === 'audio' && micRef.current) {
+        micRef.current.srcObject = null;
+      }
+    },
+  });
+
+  useEffect(() => {
+    // Set video quality for better performance
+    if (webcamOn && setQuality) {
+      setQuality("med");
+    }
+  }, [webcamOn, setQuality]);
+
+  return (
+    <div className={`participant ${isLocal ? 'local' : ''}`}>
+      {webcamOn && webcamStream ? (
+        <div className="video-container">
+          <video
+            ref={webcamRef}
+            autoPlay
+            playsInline
+            muted={isLocal}
+            className="participant-video"
+          />
+        </div>
+      ) : (
+        <div className="no-video-placeholder">
+          <div className="avatar-placeholder">
+            {displayName ? displayName.charAt(0).toUpperCase() : '?'}
+          </div>
+          <div className="participant-name">{displayName || 'Unknown'}</div>
+          <div className="no-video-text">
+            {webcamOn ? 'Connecting video...' : 'Camera is off'}
+          </div>
+        </div>
+      )}
+      
+      {/* Audio element for remote participants */}
+      {!isLocal && micStream && (
+        <audio ref={micRef} autoPlay playsInline />
+      )}
+      
+      <div className="participant-info">
+        {isLocal ? (
+          <>
+            <span className="status-icon"></span>
+            You
+          </>
+        ) : (
+          displayName || 'Unknown'
+        )}
+        {!micOn && <span className="status-icon muted">🔇</span>}
+      </div>
+    </div>
+  );
+};
+
+// Dynamically import the main component with SSR disabled
+const VideoCallApp = dynamic(() => Promise.resolve(VideoCallMainComponent), {
+  ssr: false,
+  loading: () => <LoadingComponent />
+});
 
 export default VideoCallApp;
