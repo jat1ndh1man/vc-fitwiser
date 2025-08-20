@@ -198,7 +198,15 @@ const VideoCallMainComponent = () => {
       participantName={participantName}
       onLeave={() => {
         console.log('Call ended by user');
-        window.close();
+        // Try multiple methods to close the window/webview
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'CLOSE_WEBVIEW' }, '*');
+          }
+          window.close();
+        } catch (e) {
+          console.log('Error closing window:', e);
+        }
       }}
     />
   );
@@ -216,6 +224,7 @@ const VideoCallComponent = ({
 }) => {
   const [meeting, setMeeting] = useState<any>(null);
   const [participants, setParticipants] = useState(new Map());
+  const [participantStates, setParticipantStates] = useState(new Map()); // Track audio/video states
   const [localWebcamOn, setLocalWebcamOn] = useState(true);
   const [localMicOn, setLocalMicOn] = useState(true);
   const [isConnecting, setIsConnecting] = useState(true);
@@ -351,21 +360,71 @@ const VideoCallComponent = ({
         return updated;
       });
 
+      // Initialize participant state
+      setParticipantStates(prev => {
+        const updated = new Map(prev);
+        updated.set(participant.id, {
+          micOn: true, // Default to true, will be updated by stream events
+          webcamOn: true // Default to true, will be updated by stream events
+        });
+        return updated;
+      });
+
       // Listen for stream events
       participant.on("stream-enabled", (stream: any) => {
         console.log("📺 Remote stream enabled:", stream.kind, "for", participant.id);
         handleStreamEnabled(participant.id, stream);
+        
+        // Update participant state
+        if (stream.kind === "video") {
+          setParticipantStates(prev => {
+            const updated = new Map(prev);
+            const currentState = updated.get(participant.id) || { micOn: true, webcamOn: false };
+            updated.set(participant.id, { ...currentState, webcamOn: true });
+            return updated;
+          });
+        } else if (stream.kind === "audio") {
+          setParticipantStates(prev => {
+            const updated = new Map(prev);
+            const currentState = updated.get(participant.id) || { micOn: false, webcamOn: true };
+            updated.set(participant.id, { ...currentState, micOn: true });
+            return updated;
+          });
+        }
       });
 
       participant.on("stream-disabled", (stream: any) => {
         console.log("📺 Remote stream disabled:", stream.kind, "for", participant.id);
         handleStreamDisabled(participant.id, stream);
+        
+        // Update participant state
+        if (stream.kind === "video") {
+          setParticipantStates(prev => {
+            const updated = new Map(prev);
+            const currentState = updated.get(participant.id) || { micOn: true, webcamOn: true };
+            updated.set(participant.id, { ...currentState, webcamOn: false });
+            return updated;
+          });
+        } else if (stream.kind === "audio") {
+          setParticipantStates(prev => {
+            const updated = new Map(prev);
+            const currentState = updated.get(participant.id) || { micOn: true, webcamOn: true };
+            updated.set(participant.id, { ...currentState, micOn: false });
+            return updated;
+          });
+        }
       });
     };
 
     const handleParticipantLeft = (participant: any) => {
       console.log("👤 Participant left:", participant.displayName);
       setParticipants(prev => {
+        const updated = new Map(prev);
+        updated.delete(participant.id);
+        return updated;
+      });
+
+      setParticipantStates(prev => {
         const updated = new Map(prev);
         updated.delete(participant.id);
         return updated;
@@ -513,6 +572,22 @@ const VideoCallComponent = ({
     }
   };
 
+  const switchCamera = async () => {
+    if (meeting && localWebcamOn) {
+      try {
+        // Get current video track
+        const videoTrack = meeting.localParticipant.streams.get("video")?.track;
+        if (videoTrack) {
+          // Switch camera using VideoSDK method
+          await meeting.switchWebcam();
+          console.log("📷 Camera switched successfully");
+        }
+      } catch (error) {
+        console.error("❌ Error switching camera:", error);
+      }
+    }
+  };
+
   const toggleMic = () => {
     if (meeting) {
       if (localMicOn) {
@@ -560,6 +635,11 @@ const VideoCallComponent = ({
     const stream = participantStreams.get(participant.id);
     const audioStream = audioStreams.get(participant.id);
     const hasVideo = !!(stream && stream.track);
+    
+    // Get participant state for mute/camera indicators
+    const participantState = participantStates.get(participant.id);
+    const isMicOn = isLocal ? localMicOn : (participantState?.micOn ?? true);
+    const isCameraOn = isLocal ? localWebcamOn && hasVideo : hasVideo;
 
     // Store refs for cleanup
     useEffect(() => {
@@ -740,7 +820,8 @@ const VideoCallComponent = ({
               {isLocal ? 'You' : participant.displayName || 'Unknown'}
             </span>
             <div style={{ display: 'flex', gap: '8px' }}>
-              {!localMicOn && isLocal && (
+              {/* Mic muted indicator */}
+              {!isMicOn && (
                 <div style={{
                   width: '20px',
                   height: '20px',
@@ -756,7 +837,8 @@ const VideoCallComponent = ({
                   </svg>
                 </div>
               )}
-              {!hasVideo && (
+              {/* Camera off indicator */}
+              {!isCameraOn && (
                 <div style={{
                   width: '20px',
                   height: '20px',
@@ -988,6 +1070,22 @@ const VideoCallComponent = ({
     fontSize: '20px'
   });
 
+  const getSwitchCameraButtonStyle = (): React.CSSProperties => ({
+    width: '56px',
+    height: '56px',
+    borderRadius: '50%',
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.2s',
+    backgroundColor: '#374151',
+    color: 'white',
+    fontSize: '20px',
+    marginLeft: '8px'
+  });
+
   const waitingStyle: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
@@ -1044,50 +1142,15 @@ const VideoCallComponent = ({
             width: 48px !important;
             height: 48px !important;
           }
+          
+          .mobile-switch-button {
+            width: 36px !important;
+            height: 36px !important;
+          }
         }
       `}</style>
       
       <div style={containerStyle}>
-        {/* Header */}
-        <div style={headerStyle}>
-          <div>
-            <h2 style={{
-              color: 'white',
-              fontSize: '18px',
-              fontWeight: '600',
-              margin: '0 0 4px 0'
-            }}>Video Call</h2>
-            <p style={{
-              color: '#9ca3af',
-              fontSize: '14px',
-              margin: 0
-            }}>
-              {isConnecting ? 'Connecting...' : 
-               isLeavingCall ? 'Ending call...' :
-               `${totalParticipants + 1} participant${totalParticipants !== 0 ? 's' : ''}`}
-            </p>
-          </div>
-          <button
-            onClick={onLeave}
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              border: 'none',
-              backgroundColor: '#374151',
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <svg style={{ width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
         {/* Video Grid */}
         <div style={gridContainerStyle} className="mobile-responsive">
           {isConnecting ? (
@@ -1215,49 +1278,44 @@ const VideoCallComponent = ({
               )}
             </button>
 
-            {/* Camera */}
-            <button
-              onClick={toggleWebcam}
-              disabled={isConnecting || isLeavingCall}
-              style={getControlButtonStyle(localWebcamOn)}
-              className="mobile-button"
-              title={localWebcamOn ? 'Turn off camera' : 'Turn on camera'}
-            >
-              {localWebcamOn ? (
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              ) : (
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
-                </svg>
-              )}
-            </button>
+            {/* Camera controls group */}
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              {/* Camera */}
+              <button
+                onClick={toggleWebcam}
+                disabled={isConnecting || isLeavingCall}
+                style={getControlButtonStyle(localWebcamOn)}
+                className="mobile-button"
+                title={localWebcamOn ? 'Turn off camera' : 'Turn on camera'}
+              >
+                {localWebcamOn ? (
+                  <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                ) : (
+                  <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
+                  </svg>
+                )}
+              </button>
 
-            {/* End Call */}
-            <button
-              onClick={handleLeaveCall}
-              disabled={isLeavingCall}
-              style={getControlButtonStyle(false, true)}
-              className="mobile-button"
-              title="End call"
-            >
-              {isLeavingCall ? (
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  border: '2px solid white',
-                  borderTop: '2px solid transparent',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }}></div>
-              ) : (
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 3l18 18" />
-                </svg>
+              {/* Camera Switch Button */}
+              {localWebcamOn && (
+                <button
+                  onClick={switchCamera}
+                  disabled={isConnecting || isLeavingCall}
+                  style={getSwitchCameraButtonStyle()}
+                  className="mobile-switch-button"
+                  title="Switch camera"
+                >
+                  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                  </svg>
+                </button>
               )}
-            </button>
+            </div>
+
           </div>
           
           {/* Call info */}
@@ -1269,13 +1327,6 @@ const VideoCallComponent = ({
             }}>
               Room ID: <span style={{ color: '#60a5fa', fontWeight: '600' }}>{roomId}</span> • 
               {remoteParticipants.length + 1} participant{remoteParticipants.length !== 0 ? 's' : ''}
-            </p>
-            <p style={{
-              color: '#6b7280',
-              fontSize: '11px',
-              margin: 0
-            }}>
-              Double-tap any video to expand • Audio should work automatically
             </p>
           </div>
         </div>
