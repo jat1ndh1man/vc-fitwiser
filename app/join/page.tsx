@@ -1,43 +1,136 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import dynamic from 'next/dynamic';
 
 // VideoSDK Configuration - Update these with your actual values
 const VIDEOSDK_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGlrZXkiOiJkMzFmYjVjZi1iYzFkLTRmMjQtYjg1Ni05OTVlZTgzMjY2MDAiLCJwZXJtaXNzaW9ucyI6WyJhbGxvd19qb2luIl0sImlhdCI6MTc1NTQyOTQ4MSwiZXhwIjoxOTEzMjE3NDgxfQ.PDGqipQbZ8B_gd1Emys5pFjkC7IOGrwvRq418fNhL1Y";
 
 // Loading component
 const LoadingComponent = () => (
-  <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50">
-    <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-      <h2 className="text-white text-lg">Loading video call...</h2>
-      <p className="text-gray-400 text-sm mt-1">Please wait while we initialize the video components</p>
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 50,
+    padding: '20px'
+  }}>
+    <div style={{ textAlign: 'center' }}>
+      <div style={{
+        width: '48px',
+        height: '48px',
+        border: '3px solid #3b82f6',
+        borderTop: '3px solid transparent',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite',
+        margin: '0 auto 16px'
+      }}></div>
+      <h2 style={{
+        color: 'white',
+        fontSize: '18px',
+        fontWeight: '600',
+        margin: '0 0 8px 0'
+      }}>Loading video call...</h2>
+      <p style={{
+        color: '#9ca3af',
+        fontSize: '14px',
+        margin: 0
+      }}>Please wait while we initialize the video components</p>
     </div>
+    <style jsx>{`
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `}</style>
   </div>
 );
 
 // Error component
 const ErrorComponent = ({ error }: { error: string }) => (
-  <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50">
-    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
-      <div className="text-center">
-        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 50,
+    padding: '20px'
+  }}>
+    <div style={{
+      backgroundColor: 'white',
+      borderRadius: '12px',
+      padding: '24px',
+      maxWidth: '400px',
+      width: '100%',
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          backgroundColor: '#fef2f2',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 16px'
+        }}>
+          <svg style={{ width: '24px', height: '24px', color: '#dc2626' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Connection Error</h3>
-        <p className="text-gray-600 mb-4">{error}</p>
-        <div className="flex space-x-3">
+        <h3 style={{
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#111827',
+          margin: '0 0 8px 0'
+        }}>Connection Error</h3>
+        <p style={{
+          color: '#6b7280',
+          margin: '0 0 16px 0',
+          fontSize: '14px'
+        }}>{error}</p>
+        <div style={{ display: 'flex', gap: '12px' }}>
           <button
             onClick={() => window.location.reload()}
-            className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            style={{
+              flex: 1,
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              minHeight: '44px'
+            }}
           >
             Try Again
           </button>
           <button
             onClick={() => window.close()}
-            className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+            style={{
+              flex: 1,
+              backgroundColor: '#e5e7eb',
+              color: '#374151',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              minHeight: '44px'
+            }}
           >
             Close
           </button>
@@ -514,29 +607,112 @@ const VideoCallComponent = ({
       }
     }, [audioStream, isLocal]);
 
+    const participantViewStyle: React.CSSProperties = {
+      position: 'relative',
+      backgroundColor: '#1f2937',
+      borderRadius: isExpanded ? '0' : '12px',
+      overflow: 'hidden',
+      width: isExpanded ? '100%' : 'auto',
+      height: isExpanded ? '100%' : 'auto',
+      aspectRatio: isExpanded ? 'auto' : '16/9',
+      cursor: hasVideo ? 'pointer' : 'default',
+      border: isLocal ? '2px solid #3b82f6' : '1px solid #374151'
+    };
+
+    const videoStyle: React.CSSProperties = {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      backgroundColor: '#000',
+      transform: isLocal ? 'scaleX(-1)' : 'none'
+    };
+
+    const noVideoStyle: React.CSSProperties = {
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#374151',
+      color: 'white'
+    };
+
+    const avatarStyle: React.CSSProperties = {
+      width: isExpanded ? '120px' : '60px',
+      height: isExpanded ? '120px' : '60px',
+      borderRadius: '50%',
+      backgroundColor: '#6b7280',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: isExpanded ? '48px' : '24px',
+      fontWeight: 'bold',
+      color: 'white',
+      marginBottom: '12px'
+    };
+
+    const overlayStyle: React.CSSProperties = {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
+      padding: '12px',
+      color: 'white'
+    };
+
+    const expandButtonStyle: React.CSSProperties = {
+      position: 'absolute',
+      top: '12px',
+      right: '12px',
+      width: '36px',
+      height: '36px',
+      borderRadius: '50%',
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      border: 'none',
+      color: 'white',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '14px'
+    };
+
     return (
       <div 
-        className={`participant-view ${isLocal ? 'local' : ''} ${isExpanded ? 'expanded' : ''}`}
+        style={participantViewStyle}
         onDoubleClick={() => handleDoubleClick(participant.id)}
       >
         {hasVideo ? (
           <video
             ref={videoRef}
-            className={`participant-video ${isExpanded ? 'expanded' : ''}`}
+            style={videoStyle}
             autoPlay
             playsInline
             muted={isLocal}
           />
         ) : (
-          <div className="no-video-placeholder">
-            <div className="no-video-content">
-              <div className="participant-avatar">
-                <span className="participant-avatar-text">
+          <div style={noVideoStyle}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={avatarStyle}>
+                <span>
                   {participant.displayName ? participant.displayName.charAt(0).toUpperCase() : '?'}
                 </span>
               </div>
-              <p className="participant-name">{participant.displayName || 'Unknown'}</p>
-              <p className="camera-off-text">Camera is off</p>
+              <p style={{ 
+                fontSize: isExpanded ? '18px' : '14px', 
+                fontWeight: '600', 
+                margin: '0 0 4px 0' 
+              }}>
+                {participant.displayName || 'Unknown'}
+              </p>
+              <p style={{ 
+                fontSize: isExpanded ? '14px' : '12px', 
+                opacity: 0.8, 
+                margin: 0 
+              }}>
+                Camera is off
+              </p>
             </div>
           </div>
         )}
@@ -551,14 +727,29 @@ const VideoCallComponent = ({
         )}
 
         {/* Participant info overlay */}
-        <div className="participant-info-overlay">
-          <div className="participant-info">
-            <span className="participant-label">
+        <div style={overlayStyle}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center' 
+          }}>
+            <span style={{ 
+              fontSize: '14px', 
+              fontWeight: '600' 
+            }}>
               {isLocal ? 'You' : participant.displayName || 'Unknown'}
             </span>
-            <div className="participant-status">
+            <div style={{ display: 'flex', gap: '8px' }}>
               {!localMicOn && isLocal && (
-                <div className="status-indicator muted">
+                <div style={{
+                  width: '20px',
+                  height: '20px',
+                  backgroundColor: '#dc2626',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
                   <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
@@ -566,7 +757,15 @@ const VideoCallComponent = ({
                 </div>
               )}
               {!hasVideo && (
-                <div className="status-indicator camera-off">
+                <div style={{
+                  width: '20px',
+                  height: '20px',
+                  backgroundColor: '#dc2626',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
                   <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
@@ -580,7 +779,7 @@ const VideoCallComponent = ({
         {/* Expand/collapse button */}
         {hasVideo && (
           <button
-            className="expand-button"
+            style={expandButtonStyle}
             onClick={(e) => {
               e.stopPropagation();
               handleDoubleClick(participant.id);
@@ -604,32 +803,91 @@ const VideoCallComponent = ({
   // Error state
   if (connectionError) {
     return (
-      <div className="error-modal">
-        <div className="error-content">
-          <div className="error-icon">
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: '#dc2626'}}>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-          <h3 className="error-title">Connection Error</h3>
-          <p className="error-message">{connectionError}</p>
-          <div className="error-buttons">
-            <button
-              onClick={() => {
-                setConnectionError(null);
-                setIsConnecting(true);
-                window.location.reload();
-              }}
-              className="error-button primary"
-            >
-              Try Again
-            </button>
-            <button
-              onClick={onLeave}
-              className="error-button secondary"
-            >
-              Close
-            </button>
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.95)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 50,
+        padding: '20px'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          maxWidth: '400px',
+          width: '100%'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              backgroundColor: '#fef2f2',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px'
+            }}>
+              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: '#dc2626'}}>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#111827',
+              margin: '0 0 8px 0'
+            }}>Connection Error</h3>
+            <p style={{
+              color: '#6b7280',
+              margin: '0 0 16px 0'
+            }}>{connectionError}</p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  setConnectionError(null);
+                  setIsConnecting(true);
+                  window.location.reload();
+                }}
+                style={{
+                  flex: 1,
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  minHeight: '44px'
+                }}
+              >
+                Try Again
+              </button>
+              <button
+                onClick={onLeave}
+                style={{
+                  flex: 1,
+                  backgroundColor: '#e5e7eb',
+                  color: '#374151',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  minHeight: '44px'
+                }}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -639,89 +897,267 @@ const VideoCallComponent = ({
   const participantArray = Array.from(participants.values());
   const totalParticipants = participantArray.length;
 
-  return (
-    <div className="video-call-container">
-      {/* Header */}
-      <div className="video-call-header">
-        <div>
-          <h2 className="video-call-title">Video Call</h2>
-          <p className="video-call-subtitle">
-            {isConnecting ? 'Connecting...' : 
-             isLeavingCall ? 'Ending call...' :
-             `${totalParticipants + 1} participant${totalParticipants !== 0 ? 's' : ''}`}
-          </p>
-        </div>
-        <button
-          onClick={onLeave}
-          className="header-close-btn"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
+  const containerStyle: React.CSSProperties = {
+    width: '100vw',
+    height: '100vh',
+    backgroundColor: '#111827',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  };
 
-      {/* Video Grid */}
-      <div className="video-grid-container">
-        {isConnecting ? (
-          <div className="loading-container">
-            <div className="loading-content">
-              <div className="spinner"></div>
-              <p className="loading-title">Connecting to video call...</p>
-              <p className="loading-subtitle">Please wait while we connect you</p>
-            </div>
+  const headerStyle: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '12px 16px',
+    backgroundColor: '#1f2937',
+    borderBottom: '1px solid #374151',
+    minHeight: '60px'
+  };
+
+  const gridContainerStyle: React.CSSProperties = {
+    flex: 1,
+    padding: '12px',
+    overflow: 'hidden'
+  };
+
+  const getGridStyle = (): React.CSSProperties => {
+    const count = remoteParticipants.length + 1;
+    
+    if (count <= 1) {
+      return {
+        display: 'flex',
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center'
+      };
+    } else if (count === 2) {
+      return {
+        display: 'grid',
+        gridTemplateColumns: window.innerWidth > window.innerHeight ? '1fr 1fr' : '1fr',
+        gridTemplateRows: window.innerWidth > window.innerHeight ? '1fr' : '1fr 1fr',
+        gap: '12px',
+        height: '100%'
+      };
+    } else if (count <= 4) {
+      return {
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gridTemplateRows: '1fr 1fr',
+        gap: '12px',
+        height: '100%'
+      };
+    } else {
+      return {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '12px',
+        height: '100%',
+        overflow: 'auto'
+      };
+    }
+  };
+
+  const controlsStyle: React.CSSProperties = {
+    padding: '16px',
+    backgroundColor: '#1f2937',
+    borderTop: '1px solid #374151'
+  };
+
+  const controlButtonsStyle: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '16px',
+    marginBottom: '12px'
+  };
+
+  const getControlButtonStyle = (isActive: boolean, isEndCall = false): React.CSSProperties => ({
+    width: '56px',
+    height: '56px',
+    borderRadius: '50%',
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.2s',
+    backgroundColor: isEndCall ? '#dc2626' : (isActive ? '#22c55e' : '#6b7280'),
+    color: 'white',
+    fontSize: '20px'
+  });
+
+  const waitingStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    color: 'white',
+    textAlign: 'center',
+    padding: '20px'
+  };
+
+  const loadingStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    color: 'white',
+    textAlign: 'center'
+  };
+
+  const spinnerStyle: React.CSSProperties = {
+    width: '48px',
+    height: '48px',
+    border: '3px solid #3b82f6',
+    borderTop: '3px solid transparent',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+    marginBottom: '16px'
+  };
+
+  return (
+    <>
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+          .mobile-responsive {
+            padding: 8px !important;
+          }
+          
+          .mobile-grid {
+            gap: 8px !important;
+          }
+          
+          .mobile-controls {
+            padding: 12px !important;
+          }
+          
+          .mobile-button {
+            width: 48px !important;
+            height: 48px !important;
+          }
+        }
+      `}</style>
+      
+      <div style={containerStyle}>
+        {/* Header */}
+        <div style={headerStyle}>
+          <div>
+            <h2 style={{
+              color: 'white',
+              fontSize: '18px',
+              fontWeight: '600',
+              margin: '0 0 4px 0'
+            }}>Video Call</h2>
+            <p style={{
+              color: '#9ca3af',
+              fontSize: '14px',
+              margin: 0
+            }}>
+              {isConnecting ? 'Connecting...' : 
+               isLeavingCall ? 'Ending call...' :
+               `${totalParticipants + 1} participant${totalParticipants !== 0 ? 's' : ''}`}
+            </p>
           </div>
-        ) : isLeavingCall ? (
-          <div className="loading-container">
-            <div className="loading-content">
-              <div className="spinner" style={{borderTopColor: '#dc2626'}}></div>
-              <p className="loading-title">Ending call...</p>
+          <button
+            onClick={onLeave}
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              border: 'none',
+              backgroundColor: '#374151',
+              color: 'white',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <svg style={{ width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Video Grid */}
+        <div style={gridContainerStyle} className="mobile-responsive">
+          {isConnecting ? (
+            <div style={loadingStyle}>
+              <div style={spinnerStyle}></div>
+              <p style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 8px 0' }}>
+                Connecting to video call...
+              </p>
+              <p style={{ fontSize: '14px', opacity: 0.8, margin: 0 }}>
+                Please wait while we connect you
+              </p>
             </div>
-          </div>
-        ) : (
-          <div style={{height: '100%', position: 'relative'}}>
-            {/* Expanded participant overlay */}
-            {expandedParticipant && (
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: 30,
-                background: 'rgba(0,0,0,0.9)'
-              }}>
-                {meeting && meeting.localParticipant && expandedParticipant === meeting.localParticipant.id && (
-                  <ParticipantView
-                    key={`expanded-local-${meeting.localParticipant.id}`}
-                    participant={meeting.localParticipant}
-                    isLocal
-                    isExpanded
-                  />
-                )}
-                {remoteParticipants.map((participant: any) => 
-                  expandedParticipant === participant.id && (
+          ) : isLeavingCall ? (
+            <div style={loadingStyle}>
+              <div style={{...spinnerStyle, borderTopColor: '#dc2626'}}></div>
+              <p style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>
+                Ending call...
+              </p>
+            </div>
+          ) : (
+            <div style={{height: '100%', position: 'relative'}}>
+              {/* Expanded participant overlay */}
+              {expandedParticipant && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: 30,
+                  background: 'rgba(0,0,0,0.9)'
+                }}>
+                  {meeting && meeting.localParticipant && expandedParticipant === meeting.localParticipant.id && (
                     <ParticipantView
-                      key={`expanded-remote-${participant.id}`}
-                      participant={participant}
-                      isLocal={false}
+                      key={`expanded-local-${meeting.localParticipant.id}`}
+                      participant={meeting.localParticipant}
+                      isLocal
                       isExpanded
                     />
-                  )
-                )}
-              </div>
-            )}
+                  )}
+                  {remoteParticipants.map((participant: any) => 
+                    expandedParticipant === participant.id && (
+                      <ParticipantView
+                        key={`expanded-remote-${participant.id}`}
+                        participant={participant}
+                        isLocal={false}
+                        isExpanded
+                      />
+                    )
+                  )}
+                </div>
+              )}
 
-            {/* Single participant or waiting state */}
-            {remoteParticipants.length === 0 ? (
-              <div className="waiting-room">
-                <div className="waiting-content">
-                  <div className="waiting-icon">👥</div>
-                  <p className="waiting-title">Waiting for participants...</p>
-                  <p className="waiting-subtitle">Share the room ID with others to join</p>
+              {/* Single participant or waiting state */}
+              {remoteParticipants.length === 0 ? (
+                <div style={waitingStyle}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>👥</div>
+                  <p style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 8px 0' }}>
+                    Waiting for participants...
+                  </p>
+                  <p style={{ fontSize: '14px', opacity: 0.8, marginBottom: '24px' }}>
+                    Share the room ID with others to join
+                  </p>
                   {/* Show local video while waiting */}
                   {meeting && meeting.localParticipant && (
-                    <div className="local-video-preview">
+                    <div style={{
+                      width: '100%',
+                      maxWidth: '300px',
+                      aspectRatio: '16/9'
+                    }}>
                       <ParticipantView
                         key={`local-waiting-${meeting.localParticipant.id}`}
                         participant={meeting.localParticipant}
@@ -730,115 +1166,122 @@ const VideoCallComponent = ({
                     </div>
                   )}
                 </div>
-              </div>
-            ) : (
-              /* Multiple participants grid */
-              <div className={`participants-grid ${
-                remoteParticipants.length + 1 <= 1 ? 'grid-1' :
-                remoteParticipants.length + 1 <= 2 ? 'grid-2' : 
-                remoteParticipants.length + 1 <= 4 ? 'grid-4' : 
-                'grid-many'
-              }`}>
-                {/* Local participant tile */}
-                {meeting && meeting.localParticipant && (
-                  <ParticipantView
-                    key={`local-${meeting.localParticipant.id}`}
-                    participant={meeting.localParticipant}
-                    isLocal
-                  />
-                )}
+              ) : (
+                /* Multiple participants grid */
+                <div style={getGridStyle()} className="mobile-grid">
+                  {/* Local participant tile */}
+                  {meeting && meeting.localParticipant && (
+                    <ParticipantView
+                      key={`local-${meeting.localParticipant.id}`}
+                      participant={meeting.localParticipant}
+                      isLocal
+                    />
+                  )}
 
-                {/* Remote participants */}
-                {remoteParticipants.map((participant: any) => (
-                  <ParticipantView
-                    key={`remote-${participant.id}`}
-                    participant={participant}
-                    isLocal={false}
-                  />
-                ))}
-              </div>
-            )}
+                  {/* Remote participants */}
+                  {remoteParticipants.map((participant: any) => (
+                    <ParticipantView
+                      key={`remote-${participant.id}`}
+                      participant={participant}
+                      isLocal={false}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Controls */}
+        <div style={controlsStyle} className="mobile-controls">
+          <div style={controlButtonsStyle}>
+            {/* Microphone */}
+            <button
+              onClick={toggleMic}
+              disabled={isConnecting || isLeavingCall}
+              style={getControlButtonStyle(localMicOn)}
+              className="mobile-button"
+              title={localMicOn ? 'Mute microphone' : 'Unmute microphone'}
+            >
+              {localMicOn ? (
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              ) : (
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                </svg>
+              )}
+            </button>
+
+            {/* Camera */}
+            <button
+              onClick={toggleWebcam}
+              disabled={isConnecting || isLeavingCall}
+              style={getControlButtonStyle(localWebcamOn)}
+              className="mobile-button"
+              title={localWebcamOn ? 'Turn off camera' : 'Turn on camera'}
+            >
+              {localWebcamOn ? (
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              ) : (
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
+                </svg>
+              )}
+            </button>
+
+            {/* End Call */}
+            <button
+              onClick={handleLeaveCall}
+              disabled={isLeavingCall}
+              style={getControlButtonStyle(false, true)}
+              className="mobile-button"
+              title="End call"
+            >
+              {isLeavingCall ? (
+                <div style={{
+                  width: '20px',
+                  height: '20px',
+                  border: '2px solid white',
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+              ) : (
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 3l18 18" />
+                </svg>
+              )}
+            </button>
           </div>
-        )}
-      </div>
-
-      {/* Controls */}
-      <div className="controls-container">
-        <div className="controls-buttons">
-          {/* Microphone */}
-          <button
-            onClick={toggleMic}
-            disabled={isConnecting || isLeavingCall}
-            className={`control-button ${localMicOn ? 'mic-on' : 'mic-off'}`}
-            title={localMicOn ? 'Mute microphone' : 'Unmute microphone'}
-          >
-            {localMicOn ? (
-              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-            ) : (
-              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-              </svg>
-            )}
-          </button>
-
-          {/* Camera */}
-          <button
-            onClick={toggleWebcam}
-            disabled={isConnecting || isLeavingCall}
-            className={`control-button ${localWebcamOn ? 'camera-on' : 'camera-off'}`}
-            title={localWebcamOn ? 'Turn off camera' : 'Turn on camera'}
-          >
-            {localWebcamOn ? (
-              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            ) : (
-              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
-              </svg>
-            )}
-          </button>
-
-          {/* End Call */}
-          <button
-            onClick={handleLeaveCall}
-            disabled={isLeavingCall}
-            className="control-button end-call"
-            title="End call"
-          >
-            {isLeavingCall ? (
-              <div className="end-call-spinner"></div>
-            ) : (
-              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 3l18 18" />
-              </svg>
-            )}
-          </button>
-        </div>
-        
-        {/* Call info */}
-        <div className="call-info">
-          <p className="call-details">
-            Room ID: <span className="room-id">{roomId}</span> • 
-            {remoteParticipants.length + 1} participant{remoteParticipants.length !== 0 ? 's' : ''}
-          </p>
-          <p className="call-instructions">
-            Double-click any video to expand • Audio should work automatically
-          </p>
+          
+          {/* Call info */}
+          <div style={{ textAlign: 'center' }}>
+            <p style={{
+              color: '#9ca3af',
+              fontSize: '12px',
+              margin: '0 0 4px 0'
+            }}>
+              Room ID: <span style={{ color: '#60a5fa', fontWeight: '600' }}>{roomId}</span> • 
+              {remoteParticipants.length + 1} participant{remoteParticipants.length !== 0 ? 's' : ''}
+            </p>
+            <p style={{
+              color: '#6b7280',
+              fontSize: '11px',
+              margin: 0
+            }}>
+              Double-tap any video to expand • Audio should work automatically
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
-// Dynamically import the main component with SSR disabled
-const VideoCallApp = dynamic(() => Promise.resolve(VideoCallMainComponent), {
-  ssr: false,
-  loading: () => <LoadingComponent />
-});
-
-export default VideoCallApp;
+export default VideoCallMainComponent;
