@@ -229,6 +229,9 @@ const VideoCallComponent = ({
   const [localWebcamOn, setLocalWebcamOn] = useState(true);
   const [localMicOn, setLocalMicOn] = useState(true);
   const [isConnecting, setIsConnecting] = useState(true);
+  const [currentFacingMode, setCurrentFacingMode] = useState<'user' | 'environment'>('user'); // Add this line
+
+
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isLeavingCall, setIsLeavingCall] = useState(false);
   const [participantStreams, setParticipantStreams] = useState(new Map());
@@ -589,7 +592,7 @@ const switchCamera = async () => {
       const curSettings: any = curTrack?.getSettings?.() || {};
       const currentDeviceId: string | undefined = curSettings.deviceId;
       
-      // Prefer “back/environment” when toggling
+      // Prefer "back/environment" when toggling
       const looksLikeBack = (label = "") =>
         /back|rear|environment/i.test(label);
 
@@ -604,23 +607,36 @@ const switchCamera = async () => {
 
       if (target?.deviceId) {
         await meeting.changeWebcam(target.deviceId);
+        
+        // Update facing mode based on device label
+        const isBackCamera = looksLikeBack(target.label);
+        setCurrentFacingMode(isBackCamera ? 'environment' : 'user');
         return;
       }
     }
 
     // 2) Fallback for mobile browsers: rebuild track with opposite facing
     const VideoSDK = await loadVideoSDK();
-    const localId = meeting?.localParticipant?.id;
-    const curTrack = participantStreams.get(localId)?.track;
-    const currentFacing: string =
-      curTrack?.getSettings?.().facingMode || "user";
+const localId = meeting?.localParticipant?.id;
+const curTrack = participantStreams.get(localId)?.track;
+const currentFacing: string =
+  curTrack?.getSettings?.().facingMode || currentFacingMode;
 
-    await meeting.disableWebcam();
-    const custom = await VideoSDK.createCameraVideoTrack({
-      // flip front<->back
-      facingMode: currentFacing === "environment" ? "front" : "environment",
-    });
-    await meeting.enableWebcam(custom);
+await meeting.disableWebcam();
+const newFacingMode = currentFacing === "environment" ? "user" : "environment";
+
+// Map to VideoSDK expected values: "user" -> "front", "environment" -> "environment"
+const videoSDKFacingMode = newFacingMode === "user" ? "front" : "environment";
+
+const custom = await VideoSDK.createCameraVideoTrack({
+  // flip front<->back
+  facingMode: videoSDKFacingMode,
+});
+await meeting.enableWebcam(custom);
+
+// Update our state
+setCurrentFacingMode(newFacingMode);
+    
   } catch (err) {
     console.error("Error switching camera:", err);
     setConnectionError("Unable to switch camera. Check browser permissions and try again.");
@@ -664,10 +680,13 @@ const switchCamera = async () => {
     participant, 
     isLocal = false, 
     isExpanded = false 
+    
   }: { 
     participant: any; 
     isLocal?: boolean; 
     isExpanded?: boolean; 
+    currentFacingMode?: 'user' | 'environment';
+
   }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const audioRef = useRef<HTMLAudioElement>(null);
@@ -734,7 +753,6 @@ const switchCamera = async () => {
       overflow: 'hidden',
       width: isExpanded ? '100%' : 'auto',
       height: isExpanded ? '100%' : 'auto',
-      aspectRatio: isExpanded ? 'auto' : '16/9',
       cursor: hasVideo ? 'pointer' : 'default',
       border: isLocal ? '2px solid #3b82f6' : '1px solid #374151'
     };
@@ -744,7 +762,7 @@ const switchCamera = async () => {
       height: '100%',
       objectFit: 'cover',
       backgroundColor: '#000',
-      transform: isLocal ? 'scaleX(-1)' : 'none'
+  transform: isLocal && currentFacingMode === 'user' ? 'scaleX(-1)' : 'none'
     };
 
     const noVideoStyle: React.CSSProperties = {
@@ -795,7 +813,12 @@ const switchCamera = async () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: '14px'
+      fontSize: '14px',
+       WebkitTapHighlightColor: 'transparent',
+  WebkitTouchCallout: 'none',
+  WebkitUserSelect: 'none',
+  userSelect: 'none',
+  outline: 'none'
     };
 
     return (
@@ -1107,7 +1130,12 @@ const switchCamera = async () => {
     transition: 'all 0.2s',
     backgroundColor: isEndCall ? '#dc2626' : (isActive ? '#22c55e' : '#6b7280'),
     color: 'white',
-    fontSize: '20px'
+    fontSize: '20px',
+     WebkitTapHighlightColor: 'transparent',
+  WebkitTouchCallout: 'none',
+  WebkitUserSelect: 'none',
+  userSelect: 'none',
+  outline: 'none'
   });
 
 const getSwitchCameraButtonStyle = (): React.CSSProperties => ({
@@ -1123,7 +1151,12 @@ const getSwitchCameraButtonStyle = (): React.CSSProperties => ({
   backgroundColor: '#22c55e', 
   color: 'white',
   fontSize: '20px',
-  marginLeft: '14px'
+  marginLeft: '14px',
+    WebkitTapHighlightColor: 'transparent',
+  WebkitTouchCallout: 'none',
+  WebkitUserSelect: 'none',
+  userSelect: 'none',
+  outline: 'none'
   });
 
   const waitingStyle: React.CSSProperties = {
@@ -1159,36 +1192,52 @@ const getSwitchCameraButtonStyle = (): React.CSSProperties => ({
 
   return (
     <>
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        
-        @media (max-width: 768px) {
-          .mobile-responsive {
-            padding: 8px !important;
-          }
-          
-          .mobile-grid {
-            gap: 8px !important;
-          }
-          
-          .mobile-controls {
-            padding: 12px !important;
-          }
-          
-          .mobile-button {
-            width: 48px !important;
-            height: 48px !important;
-          }
-          
-          .mobile-switch-button {
-            width: 36px !important;
-            height: 36px !important;
-          }
-        }
-      `}</style>
+<style jsx>{`
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  /* Remove tap highlights on all buttons and interactive elements */
+  button {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    outline: none;
+  }
+  
+  button:focus {
+    outline: none;
+  }
+  
+  @media (max-width: 768px) {
+    .mobile-responsive {
+      padding: 8px !important;
+    }
+    
+    .mobile-grid {
+      gap: 8px !important;
+    }
+    
+    .mobile-controls {
+      padding: 12px !important;
+    }
+    
+    .mobile-button {
+      width: 48px !important;
+      height: 48px !important;
+    }
+    
+    .mobile-switch-button {
+      width: 36px !important;
+      height: 36px !important;
+    }
+  }
+`}</style>
       
       <div style={containerStyle}>
         {/* Video Grid */}
@@ -1277,6 +1326,8 @@ const getSwitchCameraButtonStyle = (): React.CSSProperties => ({
                       key={`local-${meeting.localParticipant.id}`}
                       participant={meeting.localParticipant}
                       isLocal
+                      currentFacingMode={currentFacingMode}
+
                     />
                   )}
 
@@ -1357,17 +1408,7 @@ const getSwitchCameraButtonStyle = (): React.CSSProperties => ({
 
           </div>
           
-          {/* Call info */}
-          <div style={{ textAlign: 'center' }}>
-            <p style={{
-              color: '#9ca3af',
-              fontSize: '12px',
-              margin: '0 0 4px 0'
-            }}>
-              Room ID: <span style={{ color: '#60a5fa', fontWeight: '600' }}>{roomId}</span> • 
-              {remoteParticipants.length + 1} participant{remoteParticipants.length !== 0 ? 's' : ''}
-            </p>
-          </div>
+  
         </div>
       </div>
     </>
