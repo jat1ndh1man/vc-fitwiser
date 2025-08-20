@@ -148,7 +148,8 @@ const VideoCallMainComponent = () => {
   const [participantId, setParticipantId] = useState<string>('');
   const [initialized, setInitialized] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
-
+  const [localFacingMode, setLocalFacingMode] =
+  useState<'user' | 'environment' | 'unknown'>('unknown');
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -293,6 +294,7 @@ const VideoCallComponent = ({
         };
 
         const meetingInstance = VideoSDK.initMeeting(meetingConfig);
+        
         currentMeeting = meetingInstance;
 
         if (!isMounted) {
@@ -572,21 +574,58 @@ const VideoCallComponent = ({
     }
   };
 
-  const switchCamera = async () => {
-    if (meeting && localWebcamOn) {
-      try {
-        // Get current video track
-        const videoTrack = meeting.localParticipant.streams.get("video")?.track;
-        if (videoTrack) {
-          // Switch camera using VideoSDK method
-          await meeting.switchWebcam();
-          console.log("📷 Camera switched successfully");
-        }
-      } catch (error) {
-        console.error("❌ Error switching camera:", error);
+    const camIndexRef = useRef(0);
+
+const switchCamera = async () => {
+  if (!meeting || !localWebcamOn) return;
+
+  try {
+    // 1) Try native device switching first
+    const webcams = (await meeting.getWebcams?.()) || [];
+    if (webcams.length) {
+      // figure out the current deviceId if possible
+      const localId = meeting?.localParticipant?.id;
+      const curTrack = participantStreams.get(localId)?.track;
+      const curSettings: any = curTrack?.getSettings?.() || {};
+      const currentDeviceId: string | undefined = curSettings.deviceId;
+      
+      // Prefer “back/environment” when toggling
+      const looksLikeBack = (label = "") =>
+        /back|rear|environment/i.test(label);
+
+      // choose target device
+      let target =
+        // first, pick a different device than the current one
+        webcams.find((d: any) => d.deviceId && d.deviceId !== currentDeviceId) ||
+        // next, try explicitly a back camera by label
+        webcams.find((d: any) => looksLikeBack(d.label)) ||
+        // otherwise just rotate through list
+        webcams[(camIndexRef.current = (camIndexRef.current + 1) % webcams.length)];
+
+      if (target?.deviceId) {
+        await meeting.changeWebcam(target.deviceId);
+        return;
       }
     }
-  };
+
+    // 2) Fallback for mobile browsers: rebuild track with opposite facing
+    const VideoSDK = await loadVideoSDK();
+    const localId = meeting?.localParticipant?.id;
+    const curTrack = participantStreams.get(localId)?.track;
+    const currentFacing: string =
+      curTrack?.getSettings?.().facingMode || "user";
+
+    await meeting.disableWebcam();
+    const custom = await VideoSDK.createCameraVideoTrack({
+      // flip front<->back
+      facingMode: currentFacing === "environment" ? "front" : "environment",
+    });
+    await meeting.enableWebcam(custom);
+  } catch (err) {
+    console.error("Error switching camera:", err);
+    setConnectionError("Unable to switch camera. Check browser permissions and try again.");
+  }
+};
 
   const toggleMic = () => {
     if (meeting) {
@@ -632,6 +671,7 @@ const VideoCallComponent = ({
   }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const audioRef = useRef<HTMLAudioElement>(null);
+
     const stream = participantStreams.get(participant.id);
     const audioStream = audioStreams.get(participant.id);
     const hasVideo = !!(stream && stream.track);
@@ -1070,20 +1110,20 @@ const VideoCallComponent = ({
     fontSize: '20px'
   });
 
-  const getSwitchCameraButtonStyle = (): React.CSSProperties => ({
-    width: '56px',
-    height: '56px',
-    borderRadius: '50%',
-    border: 'none',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'all 0.2s',
-    backgroundColor: '#374151',
-    color: 'white',
-    fontSize: '20px',
-    marginLeft: '8px'
+const getSwitchCameraButtonStyle = (): React.CSSProperties => ({
+  width: '56px',
+  height: '56px',
+  borderRadius: '50%',
+  border: 'none',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'all 0.2s',
+  backgroundColor: '#22c55e', 
+  color: 'white',
+  fontSize: '20px',
+  marginLeft: '14px'
   });
 
   const waitingStyle: React.CSSProperties = {
@@ -1207,12 +1247,11 @@ const VideoCallComponent = ({
               {/* Single participant or waiting state */}
               {remoteParticipants.length === 0 ? (
                 <div style={waitingStyle}>
-                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>👥</div>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}></div>
                   <p style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 8px 0' }}>
-                    Waiting for participants...
+                    Waiting for Coach...
                   </p>
                   <p style={{ fontSize: '14px', opacity: 0.8, marginBottom: '24px' }}>
-                    Share the room ID with others to join
                   </p>
                   {/* Show local video while waiting */}
                   {meeting && meeting.localParticipant && (
@@ -1302,16 +1341,16 @@ const VideoCallComponent = ({
 
               {/* Camera Switch Button */}
               {localWebcamOn && (
-                <button
-                  onClick={switchCamera}
-                  disabled={isConnecting || isLeavingCall}
-                  style={getSwitchCameraButtonStyle()}
-                  className="mobile-switch-button"
-                  title="Switch camera"
-                >
-                  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                  </svg>
+                 <button
+    onClick={switchCamera}
+    disabled={isConnecting || isLeavingCall}
+    style={getSwitchCameraButtonStyle()}
+    className="mobile-button" 
+    title="Switch camera"
+  >
+           <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+</svg>
                 </button>
               )}
             </div>
